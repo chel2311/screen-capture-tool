@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画面キャプチャ編集ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Meiryo, "Hiragino Kaku Gothic Pro", sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #005BAB 0%, #003d7a 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 110px);
+        }
+
+        .sidebar {
+            width: 560px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding: 15px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            align-content: start;
+        }
+
+        .tool-section {
+            margin-bottom: 0;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .tool-section h3 {
+            font-size: 11px;
+            color: #005BAB;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .tool-btn {
+            padding: 10px 4px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 11px;
+            color: #495057;
+            font-weight: 500;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tool-btn:hover {
+            border-color: #005BAB;
+            color: #005BAB;
+            transform: translateY(-1px);
+        }
+
+        .tool-btn.active {
+            background: #005BAB;
+            color: white;
+            border-color: #005BAB;
+        }
+
+        .tool-icon {
+            font-size: 18px;
+        }
+
+        .quick-color-bar {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-btn.active {
+            border: 3px solid #005BAB;
+            box-shadow: 0 0 0 2px rgba(0,91,171,0.2);
+        }
+
+        .slider-group {
+            margin-top: 8px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: #005BAB;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #005BAB;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #005BAB;
+            cursor: pointer;
+            border: none;
+        }
+
+        .text-input-inline {
+            width: 100%;
+            padding: 8px 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .text-input-inline:focus {
+            outline: none;
+            border-color: #005BAB;
+            box-shadow: 0 0 0 3px rgba(0,91,171,0.1);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .action-btn.primary {
+            background: #005BAB;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: #003d7a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,91,171,0.3);
+        }
+
+        .action-btn.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .action-btn.success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .action-btn.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .action-btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .action-btn.danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .action-btn.danger:hover {
+            background: #c82333;
+        }
+
+        .action-btn.warning {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .action-btn.warning:hover {
+            background: #e0a800;
+        }
+
+        .canvas-area {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #f1f3f5;
+        }
+
+        .top-toolbar {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding-right: 15px;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #495057;
+        }
+
+        .toolbar-btn:hover {
+            border-color: #005BAB;
+            color: #005BAB;
+            transform: translateY(-1px);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: auto;
+            padding: 20px;
+        }
+
+        #canvas {
+            border: 2px solid #dee2e6;
+            background: white;
+            cursor: crosshair;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #canvas.select-mode {
+            cursor: default;
+        }
+
+        .info-badge {
+            background: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #0277bd;
+            margin-top: 6px;
+            line-height: 1.3;
+        }
+
+        .folder-badge {
+            background: #fff3cd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            color: #856404;
+            margin-top: 6px;
+            word-break: break-all;
+            max-height: 40px;
+            overflow-y: auto;
+        }
+
+        .stats-inline {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+        }
+
+        .stat-value {
+            color: #005BAB;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .text-popup {
+            display: none;
+            position: fixed;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9998;
+            min-width: 300px;
+        }
+
+        .text-popup.active {
+            display: block;
+        }
+
+        .text-popup input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .text-popup input:focus {
+            outline: none;
+            border-color: #005BAB;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .popup-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .popup-btn.ok {
+            background: #005BAB;
+            color: white;
+        }
+
+        .popup-btn.ok:hover {
+            background: #003d7a;
+        }
+
+        .popup-btn.cancel {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .popup-btn.cancel:hover {
+            background: #dee2e6;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10002;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9999;
+            padding: 5px 0;
+            min-width: 150px;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #ffe6e6;
+            color: #dc3545;
+        }
+
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background: #005BAB;
+            border: 2px solid white;
+            position: absolute;
+            cursor: nwse-resize;
+            box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        }
+
+        .trim-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trim-overlay.active {
+            display: flex;
+        }
+
+        .trim-container {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .trim-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i data-lucide="camera" style="width: 20px; height: 20px; vertical-align: middle;"></i> 画面キャプチャ編集ツール</h1>
+            <div class="header-actions">
+                <input type="text" id="fileNameHeader" class="text-input-inline" placeholder="ファイル名（任意）" value="" style="width: 200px; margin: 0;">
+                <button class="header-btn" onclick="selectSaveFolder()"><i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 保存先選択</button>
+                <button class="header-btn" onclick="pasteFromClipboard()"><i data-lucide="clipboard" style="width: 14px; height: 14px; vertical-align: middle;"></i> 貼り付け (Ctrl+V)</button>
+                <button class="header-btn" onclick="quickSave()"><i data-lucide="save" style="width: 14px; height: 14px; vertical-align: middle;"></i> 保存 (Ctrl+S)</button>
+                <button class="header-btn" onclick="copyToClipboard()"><i data-lucide="clipboard-copy" style="width: 14px; height: 14px; vertical-align: middle;"></i> クリップボードにコピー</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="tool-section">
+                    <h3><i data-lucide="camera" style="width: 14px; height: 14px; vertical-align: middle;"></i> 読み込み</h3>
+                    <button class="action-btn primary" onclick="pasteFromClipboard()">
+                        <i data-lucide="clipboard" style="width: 16px; height: 16px;"></i> クリップボード
+                    </button>
+                    <button class="action-btn secondary" onclick="loadImageFile()">
+                        <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i> ファイル選択
+                    </button>
+                    <button class="action-btn warning" onclick="captureScreen()">
+                        <i data-lucide="monitor" style="width: 16px; height: 16px;"></i> 画面キャプチャ
+                    </button>
+                    <button class="action-btn secondary" onclick="startTrimMode()" id="trimBtn" disabled>
+                        <i data-lucide="crop" style="width: 16px; height: 16px;"></i> トリミング
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                    <div class="info-badge">
+                        <i data-lucide="lightbulb" style="width: 12px; height: 12px; vertical-align: middle;"></i> Win+Shift+S でスクショ後に「クリップボード」
+                    </div>
+                    <div class="folder-badge" id="folderDisplay">
+                        未選択（ブラウザのダウンロードフォルダ）
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <h3><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle;"></i> 描画ツール</h3>
+                    <div class="btn-grid">
+                        <button class="tool-btn" onclick="selectTool('select')">
+                            <i data-lucide="mouse-pointer" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>選択</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('rect')">
+                            <i data-lucide="square" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>矩形</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('circle')">
+                            <i data-lucide="circle" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>円</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('line')">
+                            <i data-lucide="minus" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>線</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('arrow')">
+                            <i data-lucide="arrow-right" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>矢印</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('polyline')">
+                            <i data-lucide="git-branch" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>連続線</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('text')">
+                            <i data-lucide="type" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>文字</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('highlight')">
+                            <i data-lucide="highlighter" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>塗潰し</span>
+                        </button>
+                    </div>
+                    <div class="info-badge">
+                        <i data-lucide="edit" style="width: 12px; height: 12px; vertical-align: middle;"></i> 選択ツールで図形をダブルクリック→編集<br>
+                        <i data-lucide="git-branch" style="width: 12px; height: 12px; vertical-align: middle;"></i> 連続線: クリック連続で線を引く（右クリックで終了）
+                    </div>
+                </div>
+
+                <div class="tool-section" style="grid-column: 1 / -1;">
+                    <h3><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle;"></i> 色選択</h3>
+                    <div class="quick-color-bar">
+                        <!-- 赤系 -->
+                        <div class="color-btn" style="background: #FF0000;" onclick="selectColor('#FF0000')" data-color="#FF0000" title="赤"></div>
+                        <div class="color-btn" style="background: #FF5252;" onclick="selectColor('#FF5252')" data-color="#FF5252" title="明るい赤"></div>
+                        <div class="color-btn" style="background: #C62828;" onclick="selectColor('#C62828')" data-color="#C62828" title="暗い赤"></div>
+                        
+                        <!-- オレンジ系 -->
+                        <div class="color-btn" style="background: #FF961C;" onclick="selectColor('#FF961C')" data-color="#FF961C" title="オレンジ"></div>
+                        <div class="color-btn" style="background: #FF6F00;" onclick="selectColor('#FF6F00')" data-color="#FF6F00" title="濃いオレンジ"></div>
+                        
+                        <!-- 黄色系 -->
+                        <div class="color-btn" style="background: #FFEB3B;" onclick="selectColor('#FFEB3B')" data-color="#FFEB3B" title="黄色"></div>
+                        <div class="color-btn" style="background: #FDD835;" onclick="selectColor('#FDD835')" data-color="#FDD835" title="濃い黄色"></div>
+                        
+                        <!-- 緑系 -->
+                        <div class="color-btn" style="background: #4CAF50;" onclick="selectColor('#4CAF50')" data-color="#4CAF50" title="緑"></div>
+                        <div class="color-btn" style="background: #66BB6A;" onclick="selectColor('#66BB6A')" data-color="#66BB6A" title="明るい緑"></div>
+                        <div class="color-btn" style="background: #2E7D32;" onclick="selectColor('#2E7D32')" data-color="#2E7D32" title="暗い緑"></div>
+                        
+                        <!-- 青系 -->
+                        <div class="color-btn" style="background: #2196F3;" onclick="selectColor('#2196F3')" data-color="#2196F3" title="青"></div>
+                        <div class="color-btn" style="background: #1976D2;" onclick="selectColor('#1976D2')" data-color="#1976D2" title="濃い青"></div>
+                        <div class="color-btn" style="background: #005BAB;" onclick="selectColor('#005BAB')" data-color="#005BAB" title="コーポレートブルー"></div>
+                        
+                        <!-- 紫・ピンク系 -->
+                        <div class="color-btn" style="background: #9C27B0;" onclick="selectColor('#9C27B0')" data-color="#9C27B0" title="紫"></div>
+                        <div class="color-btn" style="background: #E91E63;" onclick="selectColor('#E91E63')" data-color="#E91E63" title="ピンク"></div>
+                        
+                        <!-- グレー・モノトーン -->
+                        <div class="color-btn" style="background: #000000;" onclick="selectColor('#000000')" data-color="#000000" title="黒"></div>
+                        <div class="color-btn" style="background: #424242;" onclick="selectColor('#424242')" data-color="#424242" title="濃いグレー"></div>
+                        <div class="color-btn" style="background: #757575;" onclick="selectColor('#757575')" data-color="#757575" title="グレー"></div>
+                        <div class="color-btn" style="background: #BDBDBD;" onclick="selectColor('#BDBDBD')" data-color="#BDBDBD" title="明るいグレー"></div>
+                        <div class="color-btn" style="background: #FFFFFF; border-color: #999;" onclick="selectColor('#FFFFFF')" data-color="#FFFFFF" title="白"></div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <h3><i data-lucide="settings" style="width: 14px; height: 14px; vertical-align: middle;"></i> 設定</h3>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>線の太さ</span>
+                            <span class="slider-value"><span id="lineWidthValue">3</span>px</span>
+                        </div>
+                        <input type="range" id="lineWidth" min="1" max="20" value="3" oninput="updateSlider('lineWidth')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>文字サイズ</span>
+                            <span class="slider-value"><span id="fontSizeValue">24</span>px</span>
+                        </div>
+                        <input type="range" id="fontSize" min="12" max="72" value="24" oninput="updateSlider('fontSize')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>図形透過性</span>
+                            <span class="slider-value"><span id="fillOpacityValue">0</span>%</span>
+                        </div>
+                        <input type="range" id="fillOpacity" min="0" max="100" value="0" oninput="updateSlider('fillOpacity')">
+                    </div>
+                    <div class="stats-inline">
+                        <div class="stat-item">
+                            <span class="stat-label">保存数</span>
+                            <span class="stat-value" id="savedCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">図形数</span>
+                            <span class="stat-value" id="shapeCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section">
+                    <h3><i data-lucide="wrench" style="width: 14px; height: 14px; vertical-align: middle;"></i> 編集</h3>
+                    <button class="action-btn secondary" onclick="undoLast()">
+                        <i data-lucide="undo" style="width: 16px; height: 16px;"></i> 取り消し (Ctrl+Z)
+                    </button>
+                    <button class="action-btn danger" onclick="clearAll()">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> すべて削除
+                    </button>
+                </div>
+            </div>
+
+            <div class="canvas-area">
+                <div class="top-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="zoomOut()" title="縮小"><i data-lucide="zoom-out" style="width: 16px; height: 16px;"></i></button>
+                        <button class="toolbar-btn" onclick="zoomReset()" title="リセット"><i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i></button>
+                        <button class="toolbar-btn" onclick="zoomIn()" title="拡大"><i data-lucide="zoom-in" style="width: 16px; height: 16px;"></i></button>
+                    </div>
+                    <div class="toolbar-group" style="border: none;">
+                        <span style="font-size: 12px; color: #6c757d;">ズーム: <strong id="zoomLevel">100</strong>%</span>
+                    </div>
+                    <div class="toolbar-group" style="border: none;">
+                        <span style="font-size: 12px; color: #6c757d;" id="canvasSize">キャンバス未作成</span>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="canvas" width="800" height="600"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-popup" id="textPopup">
+        <input type="text" id="textInput" placeholder="テキストを入力してください" autocomplete="off">
+        <div class="popup-buttons">
+            <button class="popup-btn cancel" onclick="cancelText()">キャンセル</button>
+            <button class="popup-btn ok" onclick="confirmText()">OK</button>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editSelectedShape()">
+            <i data-lucide="edit" style="width: 14px; height: 14px;"></i> 編集
+        </div>
+        <div class="context-menu-item" onclick="duplicateSelectedShape()">
+            <i data-lucide="copy" style="width: 14px; height: 14px;"></i> 複製
+        </div>
+        <div class="context-menu-item danger" onclick="deleteSelectedShape()">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> 削除
+        </div>
+    </div>
+
+    <div class="trim-overlay" id="trimOverlay">
+        <div class="trim-container">
+            <canvas id="trimCanvas"></canvas>
+            <div class="trim-controls">
+                <button class="popup-btn ok" onclick="confirmTrim()">トリミング実行</button>
+                <button class="popup-btn cancel" onclick="cancelTrim()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let currentTool = null;
+        let currentColor = '#FF0000';
+        let isDrawing = false;
+        let startX = 0;
+        let startY = 0;
+        let shapes = [];
+        let backgroundImage = null;
+        let zoom = 1.0;
+        let savedCount = 0;
+        let pendingTextPosition = null;
+        let selectedShape = null;
+        let isDragging = false;
+        let isResizing = false;
+        let resizeHandle = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let saveDirectoryHandle = null;
+        let polylinePoints = [];
+        let isPolylineActive = false;
+        let doubleClickTimer = null;
+        let lastClickTime = 0;
+        let trimMode = false;
+        let trimRect = { x: 0, y: 0, w: 0, h: 0 };
+        let isShiftPressed = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        // IndexedDB初期化
+        let db;
+        const dbName = 'ScreenCaptureTool';
+        const request = indexedDB.open(dbName, 1);
+        
+        request.onerror = () => console.error('IndexedDB初期化エラー');
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            loadSavedDirectory();
+        };
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('settings')) {
+                db.createObjectStore('settings');
+            }
+        };
+
+        // 初期化
+        initCanvas();
+
+        function initCanvas() {
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#adb5bd';
+            ctx.font = '20px Meiryo';
+            ctx.textAlign = 'center';
+            ctx.fillText('Win+Shift+S でスクショ → 📋クリップボードボタン', canvas.width / 2, canvas.height / 2 - 10);
+            ctx.fillText('または 📁ファイル選択', canvas.width / 2, canvas.height / 2 + 20);
+        }
+
+        // 画面キャプチャ機能
+        async function captureScreen() {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: 'screen' }
+                });
+
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+
+                video.onloadedmetadata = () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = video.videoWidth;
+                    tempCanvas.height = video.videoHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(video, 0, 0);
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    loadImageToCanvas(tempCanvas.toDataURL('image/png'));
+                    showToast('画面をキャプチャしました');
+                };
+            } catch (err) {
+                if (err.name !== 'NotAllowedError') {
+                    alert('画面キャプチャに失敗しました。\n\nChrome、Edge（最新版）をご利用ください。');
+                }
+            }
+        }
+
+        // トリミングモード
+        function startTrimMode() {
+            if (!backgroundImage) return;
+            
+            trimMode = true;
+            const trimCanvas = document.getElementById('trimCanvas');
+            const trimCtx = trimCanvas.getContext('2d');
+            
+            trimCanvas.width = canvas.width;
+            trimCanvas.height = canvas.height;
+            trimCtx.drawImage(backgroundImage, 0, 0);
+            
+            document.getElementById('trimOverlay').classList.add('active');
+            
+            let trimStartX, trimStartY, isTrimming = false;
+            
+            trimCanvas.onmousedown = (e) => {
+                const rect = trimCanvas.getBoundingClientRect();
+                trimStartX = (e.clientX - rect.left) * (trimCanvas.width / rect.width);
+                trimStartY = (e.clientY - rect.top) * (trimCanvas.height / rect.height);
+                isTrimming = true;
+            };
+            
+            trimCanvas.onmousemove = (e) => {
+                if (!isTrimming) return;
+                const rect = trimCanvas.getBoundingClientRect();
+                const currentX = (e.clientX - rect.left) * (trimCanvas.width / rect.width);
+                const currentY = (e.clientY - rect.top) * (trimCanvas.height / rect.height);
+                
+                trimCtx.clearRect(0, 0, trimCanvas.width, trimCanvas.height);
+                trimCtx.drawImage(backgroundImage, 0, 0);
+                
+                trimCtx.fillStyle = 'rgba(0,0,0,0.5)';
+                trimCtx.fillRect(0, 0, trimCanvas.width, trimCanvas.height);
+                
+                const w = currentX - trimStartX;
+                const h = currentY - trimStartY;
+                trimCtx.clearRect(trimStartX, trimStartY, w, h);
+                trimCtx.drawImage(backgroundImage, trimStartX, trimStartY, w, h, trimStartX, trimStartY, w, h);
+                
+                trimCtx.strokeStyle = '#005BAB';
+                trimCtx.lineWidth = 3;
+                trimCtx.strokeRect(trimStartX, trimStartY, w, h);
+                
+                trimRect = { x: trimStartX, y: trimStartY, w: w, h: h };
+            };
+            
+            trimCanvas.onmouseup = () => {
+                isTrimming = false;
+            };
+        }
+
+        function confirmTrim() {
+            if (trimRect.w === 0 || trimRect.h === 0) {
+                alert('トリミング範囲を選択してください');
+                return;
+            }
+            
+            const tempCanvas = document.createElement('canvas');
+            const x = Math.min(trimRect.x, trimRect.x + trimRect.w);
+            const y = Math.min(trimRect.y, trimRect.y + trimRect.h);
+            const w = Math.abs(trimRect.w);
+            const h = Math.abs(trimRect.h);
+            
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(backgroundImage, x, y, w, h, 0, 0, w, h);
+            
+            loadImageToCanvas(tempCanvas.toDataURL('image/png'));
+            cancelTrim();
+            showToast('画像をトリミングしました');
+        }
+
+        function cancelTrim() {
+            trimMode = false;
+            document.getElementById('trimOverlay').classList.remove('active');
+            trimRect = { x: 0, y: 0, w: 0, h: 0 };
+        }
+
+        // フォルダパスを表示
+        async function displayFolderPath(handle) {
+            try {
+                // フォルダ名とアイコンを表示（完全パスはセキュリティ上取得不可）
+                const pathParts = [handle.name];
+                
+                // 親フォルダを遡って取得（可能な範囲で）
+                let currentHandle = handle;
+                let maxDepth = 5; // 最大5階層まで
+                
+                while (maxDepth > 0) {
+                    try {
+                        // Note: getParent()は一部のブラウザでは未実装
+                        if (currentHandle.getParent) {
+                            const parent = await currentHandle.getParent();
+                            if (parent) {
+                                pathParts.unshift(parent.name);
+                                currentHandle = parent;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    } catch {
+                        break;
+                    }
+                    maxDepth--;
+                }
+                
+                // パス表示を構築
+                const pathDisplay = pathParts.length > 1 
+                    ? `.../${pathParts.slice(-3).join('/')}` 
+                    : pathParts[0];
+                
+                document.getElementById('folderDisplay').innerHTML = `
+                    <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle; color: #005BAB;"></i> 
+                    <strong style="color: #005BAB;">${pathDisplay}</strong>
+                `;
+                lucide.createIcons();
+            } catch (err) {
+                console.error('パス表示エラー:', err);
+                // エラー時は名前のみ表示
+                document.getElementById('folderDisplay').innerHTML = `
+                    <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle; color: #005BAB;"></i> 
+                    <strong style="color: #005BAB;">${handle.name}</strong>
+                `;
+                lucide.createIcons();
+            }
+        }
+        
+        // 保存先フォルダ選択
+        async function selectSaveFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                alert('お使いのブラウザはフォルダ選択機能に対応していません。\n\nChrome、Edge（最新版）をご利用ください。\n\n※通常の保存はブラウザのダウンロードフォルダに保存されます。');
+                return;
+            }
+
+            try {
+                const options = { mode: 'readwrite' };
+                // 既存の保存先がある場合はそこから開始
+                if (saveDirectoryHandle) {
+                    options.startIn = saveDirectoryHandle;
+                }
+                
+                saveDirectoryHandle = await window.showDirectoryPicker(options);
+                
+                // フォルダパスを構築して表示
+                await displayFolderPath(saveDirectoryHandle);
+                showToast(`保存先を設定しました`);
+                
+                // IndexedDBに保存
+                if (db) {
+                    const transaction = db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    store.put(saveDirectoryHandle, 'saveDirectory');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    alert('フォルダの選択に失敗しました。');
+                }
+            }
+        }
+        
+        // 保存済みフォルダを読み込み
+        async function loadSavedDirectory() {
+            if (!db) return;
+            
+            try {
+                const transaction = db.transaction(['settings'], 'readonly');
+                const store = transaction.objectStore('settings');
+                const request = store.get('saveDirectory');
+                
+                request.onsuccess = async () => {
+                    const handle = request.result;
+                    if (!handle) return;
+                    
+                    // 権限確認
+                    const permission = await handle.queryPermission({ mode: 'readwrite' });
+                    if (permission === 'granted') {
+                        saveDirectoryHandle = handle;
+                        await displayFolderPath(handle);
+                    } else if (permission === 'prompt') {
+                        // 権限を再要求
+                        const newPermission = await handle.requestPermission({ mode: 'readwrite' });
+                        if (newPermission === 'granted') {
+                            saveDirectoryHandle = handle;
+                            await displayFolderPath(handle);
+                        }
+                    }
+                };
+            } catch (err) {
+                console.error('保存先フォルダ読み込みエラー:', err);
+            }
+        }
+
+        // クリップボードから貼り付け
+        async function pasteFromClipboard() {
+            try {
+                const items = await navigator.clipboard.read();
+                for (const item of items) {
+                    if (item.types.includes('image/png')) {
+                        const blob = await item.getType('image/png');
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            loadImageToCanvas(e.target.result);
+                            showToast('画像を読み込みました');
+                        };
+                        reader.readAsDataURL(blob);
+                        return;
+                    }
+                }
+                alert('クリップボードに画像がありません。\n\nWin+Shift+S でスクリーンショットを撮影してください。');
+            } catch (err) {
+                alert('クリップボードへのアクセスに失敗しました。');
+                console.error(err);
+            }
+        }
+
+        function loadImageFile() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    loadImageToCanvas(e.target.result);
+                    showToast('画像を読み込みました');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function loadImageToCanvas(dataUrl) {
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                backgroundImage = img;
+                shapes = [];
+                zoom = 1.0;
+                updateZoom();
+                redrawCanvas();
+                updateCanvasSize();
+                document.getElementById('trimBtn').disabled = false;
+            };
+            img.src = dataUrl;
+        }
+
+        function updateCanvasSize() {
+            document.getElementById('canvasSize').textContent = `${canvas.width} × ${canvas.height}px`;
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            selectedShape = null;
+            isPolylineActive = false;
+            polylinePoints = [];
+            
+            document.querySelectorAll('.sidebar .tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.tool-btn').classList.add('active');
+
+            if (tool === 'select') {
+                canvas.classList.add('select-mode');
+            } else {
+                canvas.classList.remove('select-mode');
+            }
+
+            redrawCanvas();
+        }
+
+        function selectColor(color) {
+            currentColor = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            if (selectedShape) {
+                selectedShape.color = color;
+                redrawCanvas();
+            }
+        }
+
+        function updateSlider(id) {
+            const value = document.getElementById(id).value;
+            document.getElementById(id + 'Value').textContent = value;
+
+            if (selectedShape) {
+                if (id === 'lineWidth') {
+                    selectedShape.width = parseInt(value);
+                } else if (id === 'fontSize' && selectedShape.type === 'text') {
+                    selectedShape.fontSize = parseInt(value);
+                } else if (id === 'fillOpacity') {
+                    selectedShape.opacity = parseInt(value) / 100;
+                }
+                redrawCanvas();
+            }
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (backgroundImage) {
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            shapes.forEach(shape => {
+                drawShape(shape, shape === selectedShape);
+            });
+
+            // ポリライン描画中のプレビュー
+            if (isPolylineActive && polylinePoints.length > 0) {
+                ctx.strokeStyle = currentColor;
+                ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+                ctx.beginPath();
+                ctx.moveTo(polylinePoints[0].x, polylinePoints[0].y);
+                for (let i = 1; i < polylinePoints.length; i++) {
+                    ctx.lineTo(polylinePoints[i].x, polylinePoints[i].y);
+                }
+                ctx.stroke();
+
+                // ポイント表示
+                polylinePoints.forEach(pt => {
+                    ctx.fillStyle = currentColor;
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            updateShapeCount();
+        }
+
+        function drawShape(shape, isSelected = false) {
+            ctx.save();
+            
+            // 透過性をRGBAで設定
+            const opacity = shape.opacity !== undefined ? (1 - shape.opacity) : 1;
+            const r = parseInt(shape.color.slice(1, 3), 16);
+            const g = parseInt(shape.color.slice(3, 5), 16);
+            const b = parseInt(shape.color.slice(5, 7), 16);
+            const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            
+            ctx.strokeStyle = rgbaColor;
+            ctx.lineWidth = shape.width;
+            ctx.fillStyle = rgbaColor;
+
+            if (shape.type === 'rect') {
+                ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+            } else if (shape.type === 'circle') {
+                ctx.beginPath();
+                const radius = Math.sqrt(shape.w ** 2 + shape.h ** 2) / 2;
+                ctx.arc(shape.x + shape.w / 2, shape.y + shape.h / 2, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (shape.type === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(shape.x, shape.y);
+                ctx.lineTo(shape.x + shape.w, shape.y + shape.h);
+                ctx.stroke();
+            } else if (shape.type === 'arrow') {
+                drawArrow(shape);
+            } else if (shape.type === 'polyline') {
+                ctx.beginPath();
+                ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                for (let i = 1; i < shape.points.length; i++) {
+                    ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                }
+                ctx.stroke();
+            } else if (shape.type === 'text') {
+                ctx.font = `${shape.fontSize}px Meiryo`;
+                ctx.fillText(shape.text, shape.x, shape.y);
+            } else if (shape.type === 'highlight') {
+                ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
+            }
+
+            if (isSelected) {
+                ctx.strokeStyle = '#005BAB';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                
+                if (shape.type === 'text') {
+                    const metrics = ctx.measureText(shape.text);
+                    ctx.strokeRect(shape.x - 5, shape.y - shape.fontSize, metrics.width + 10, shape.fontSize + 10);
+                } else if (shape.type === 'polyline') {
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    shape.points.forEach(pt => {
+                        minX = Math.min(minX, pt.x);
+                        minY = Math.min(minY, pt.y);
+                        maxX = Math.max(maxX, pt.x);
+                        maxY = Math.max(maxY, pt.y);
+                    });
+                    ctx.strokeRect(minX - 5, minY - 5, maxX - minX + 10, maxY - minY + 10);
+                } else {
+                    ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+                    
+                    // リサイズハンドル描画
+                    drawResizeHandles(shape);
+                }
+                ctx.setLineDash([]);
+            }
+
+            ctx.restore();
+        }
+
+        function drawResizeHandles(shape) {
+            const handles = [
+                { x: shape.x + shape.w, y: shape.y + shape.h, cursor: 'nwse-resize' },
+                { x: shape.x, y: shape.y + shape.h, cursor: 'nesw-resize' },
+                { x: shape.x + shape.w, y: shape.y, cursor: 'nesw-resize' },
+                { x: shape.x, y: shape.y, cursor: 'nwse-resize' }
+            ];
+
+            handles.forEach(handle => {
+                ctx.fillStyle = '#005BAB';
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(handle.x, handle.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function drawArrow(shape) {
+            const fromX = shape.x;
+            const fromY = shape.y;
+            const toX = shape.x + shape.w;
+            const toY = shape.y + shape.h;
+            const headlen = Math.max(10, shape.width * 3); // 線幅に連動
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            // 三角形の高さ分だけ線を短くする
+            const lineEndX = toX - (headlen * 0.866) * Math.cos(angle); // 0.866 ≈ cos(30°)
+            const lineEndY = toY - (headlen * 0.866) * Math.sin(angle);
+
+            // 線分を描画
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(lineEndX, lineEndY);
+            ctx.stroke();
+
+            // 三角形を描画（線の端点に接続）
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = shape.color;
+            ctx.fill();
+        }
+
+        function getResizeHandle(shape, x, y) {
+            const handles = [
+                { x: shape.x + shape.w, y: shape.y + shape.h, type: 'se' },
+                { x: shape.x, y: shape.y + shape.h, type: 'sw' },
+                { x: shape.x + shape.w, y: shape.y, type: 'ne' },
+                { x: shape.x, y: shape.y, type: 'nw' }
+            ];
+
+            for (let handle of handles) {
+                const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
+                if (dist < 8) {
+                    return handle.type;
+                }
+            }
+            return null;
+        }
+
+        function hitTest(x, y) {
+            for (let i = shapes.length - 1; i >= 0; i--) {
+                const shape = shapes[i];
+                
+                if (shape.type === 'text') {
+                    ctx.font = `${shape.fontSize}px Meiryo`;
+                    const metrics = ctx.measureText(shape.text);
+                    if (x >= shape.x && x <= shape.x + metrics.width &&
+                        y >= shape.y - shape.fontSize && y <= shape.y) {
+                        return shape;
+                    }
+                } else if (shape.type === 'polyline') {
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    shape.points.forEach(pt => {
+                        minX = Math.min(minX, pt.x);
+                        minY = Math.min(minY, pt.y);
+                        maxX = Math.max(maxX, pt.x);
+                        maxY = Math.max(maxY, pt.y);
+                    });
+                    if (x >= minX - 5 && x <= maxX + 5 && y >= minY - 5 && y <= maxY + 5) {
+                        return shape;
+                    }
+                } else {
+                    const minX = Math.min(shape.x, shape.x + shape.w);
+                    const maxX = Math.max(shape.x, shape.x + shape.w);
+                    const minY = Math.min(shape.y, shape.y + shape.h);
+                    const maxY = Math.max(shape.y, shape.y + shape.h);
+                    
+                    if (x >= minX - 5 && x <= maxX + 5 && y >= minY - 5 && y <= maxY + 5) {
+                        return shape;
+                    }
+                }
+            }
+            return null;
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            // ダブルクリック検出
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - lastClickTime;
+            
+            if (currentTool === 'select' && timeDiff < 300) {
+                const hitShape = hitTest(mouseX, mouseY);
+                if (hitShape && hitShape.type === 'text') {
+                    editSelectedShape();
+                    lastClickTime = 0;
+                    return;
+                }
+            }
+            lastClickTime = currentTime;
+
+            // ポリライン処理
+            if (currentTool === 'polyline') {
+                let pointX = mouseX;
+                let pointY = mouseY;
+                
+                // Shiftキー押下時：最後の点から水平・垂直・45度に制約
+                if (isShiftPressed && polylinePoints.length > 0) {
+                    const lastPoint = polylinePoints[polylinePoints.length - 1];
+                    const dx = pointX - lastPoint.x;
+                    const dy = pointY - lastPoint.y;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        pointY = lastPoint.y;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        pointX = lastPoint.x;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        pointX = lastPoint.x + dist * Math.sign(dx);
+                        pointY = lastPoint.y + dist * Math.sign(dy);
+                    }
+                }
+                
+                polylinePoints.push({ x: pointX, y: pointY });
+                isPolylineActive = true;
+                redrawCanvas();
+                return;
+            }
+
+            if (currentTool === 'select') {
+                const hitShape = hitTest(mouseX, mouseY);
+                if (hitShape) {
+                    selectedShape = hitShape;
+                    
+                    // リサイズハンドルチェック（全図形対応）
+                    resizeHandle = getResizeHandle(hitShape, mouseX, mouseY);
+                    if (resizeHandle) {
+                        isResizing = true;
+                        return;
+                    }
+                    
+                    isDragging = true;
+                    dragOffsetX = mouseX - hitShape.x;
+                    dragOffsetY = mouseY - hitShape.y;
+                    dragStartX = hitShape.x;
+                    dragStartY = hitShape.y;
+                    
+                    if (hitShape.width) {
+                        document.getElementById('lineWidth').value = hitShape.width;
+                        updateSlider('lineWidth');
+                    }
+                    if (hitShape.fontSize) {
+                        document.getElementById('fontSize').value = hitShape.fontSize;
+                        updateSlider('fontSize');
+                    }
+                    
+                    redrawCanvas();
+                } else {
+                    selectedShape = null;
+                    redrawCanvas();
+                }
+                return;
+            }
+
+            startX = mouseX;
+            startY = mouseY;
+
+            if (currentTool === 'text') {
+                pendingTextPosition = { x: startX, y: startY };
+                showTextPopup(e.clientX, e.clientY);
+            } else if (currentTool) {
+                isDrawing = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            // ポリライン描画中のプレビュー
+            if (isPolylineActive && polylinePoints.length > 0) {
+                let previewX = mouseX;
+                let previewY = mouseY;
+                
+                // Shiftキー押下時：最後の点から水平・垂直・45度に制約
+                if (isShiftPressed) {
+                    const lastPoint = polylinePoints[polylinePoints.length - 1];
+                    const dx = previewX - lastPoint.x;
+                    const dy = previewY - lastPoint.y;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        previewY = lastPoint.y;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        previewX = lastPoint.x;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        previewX = lastPoint.x + dist * Math.sign(dx);
+                        previewY = lastPoint.y + dist * Math.sign(dy);
+                    }
+                }
+                
+                redrawCanvas();
+                ctx.strokeStyle = currentColor;
+                ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(polylinePoints[polylinePoints.length - 1].x, polylinePoints[polylinePoints.length - 1].y);
+                ctx.lineTo(previewX, previewY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                return;
+            }
+
+            // リサイズ処理
+            if (isResizing && selectedShape) {
+                if (selectedShape.type === 'circle') {
+                    // 円のリサイズ: 半径を調整（常に正円を維持）
+                    const dx = mouseX - (selectedShape.x + selectedShape.w);
+                    const dy = mouseY - (selectedShape.y + selectedShape.h);
+                    const centerX = selectedShape.x + selectedShape.w / 2;
+                    const centerY = selectedShape.y + selectedShape.h / 2;
+                    const newRadius = Math.sqrt((mouseX - centerX) ** 2 + (mouseY - centerY) ** 2);
+                    selectedShape.w = newRadius * 2;
+                    selectedShape.h = newRadius * 2;
+                    selectedShape.x = centerX - newRadius;
+                    selectedShape.y = centerY - newRadius;
+                } else if (selectedShape.type === 'polyline') {
+                    // ポリラインのリサイズ: 全ポイントをスケール
+                    const oldWidth = selectedShape.w;
+                    const oldHeight = selectedShape.h;
+                    const dx = mouseX - (selectedShape.x + selectedShape.w);
+                    const dy = mouseY - (selectedShape.y + selectedShape.h);
+                    
+                    if (resizeHandle === 'se') {
+                        selectedShape.w += dx;
+                        selectedShape.h += dy;
+                    } else if (resizeHandle === 'sw') {
+                        selectedShape.w -= (mouseX - selectedShape.x);
+                        selectedShape.x = mouseX;
+                        selectedShape.h += dy;
+                    } else if (resizeHandle === 'ne') {
+                        selectedShape.w += dx;
+                        selectedShape.h -= (mouseY - selectedShape.y);
+                        selectedShape.y = mouseY;
+                    } else if (resizeHandle === 'nw') {
+                        selectedShape.w -= (mouseX - selectedShape.x);
+                        selectedShape.h -= (mouseY - selectedShape.y);
+                        selectedShape.x = mouseX;
+                        selectedShape.y = mouseY;
+                    }
+                    
+                    const scaleX = selectedShape.w / oldWidth;
+                    const scaleY = selectedShape.h / oldHeight;
+                    selectedShape.points = selectedShape.points.map(p => ({
+                        x: selectedShape.x + (p.x - selectedShape.x) * scaleX,
+                        y: selectedShape.y + (p.y - selectedShape.y) * scaleY
+                    }));
+                } else if (selectedShape.type === 'text') {
+                    // テキストのリサイズ: フォントサイズを調整
+                    const dx = mouseX - (selectedShape.x + selectedShape.w);
+                    const dy = mouseY - (selectedShape.y + selectedShape.h);
+                    const oldSize = selectedShape.fontSize || 24;
+                    const scaleFactor = Math.sqrt((dx * dx + dy * dy) / (selectedShape.w * selectedShape.w + selectedShape.h * selectedShape.h));
+                    selectedShape.fontSize = Math.max(12, Math.round(oldSize * (1 + scaleFactor)));
+                } else {
+                    // 通常の図形（rect, line, arrow等）
+                    const dx = mouseX - (selectedShape.x + selectedShape.w);
+                    const dy = mouseY - (selectedShape.y + selectedShape.h);
+                    
+                    // Shiftキー押下時：縦横比を維持
+                    if (isShiftPressed) {
+                        const aspectRatio = Math.abs(selectedShape.w) / Math.abs(selectedShape.h);
+                        
+                        if (resizeHandle === 'se') {
+                            const newW = selectedShape.w + dx;
+                            const newH = newW / aspectRatio * Math.sign(selectedShape.h);
+                            selectedShape.w = newW;
+                            selectedShape.h = newH;
+                        } else if (resizeHandle === 'sw') {
+                            const newW = selectedShape.w - (mouseX - selectedShape.x);
+                            const newH = newW / aspectRatio * Math.sign(selectedShape.h);
+                            selectedShape.x = mouseX;
+                            selectedShape.w = newW;
+                            selectedShape.h = newH;
+                        } else if (resizeHandle === 'ne') {
+                            const newW = selectedShape.w + dx;
+                            const newH = newW / aspectRatio * Math.sign(selectedShape.h);
+                            selectedShape.w = newW;
+                            selectedShape.h = newH;
+                            selectedShape.y = selectedShape.y + selectedShape.h - newH;
+                        } else if (resizeHandle === 'nw') {
+                            const newW = selectedShape.w - (mouseX - selectedShape.x);
+                            const newH = newW / aspectRatio * Math.sign(selectedShape.h);
+                            const oldH = selectedShape.h;
+                            selectedShape.x = mouseX;
+                            selectedShape.w = newW;
+                            selectedShape.h = newH;
+                            selectedShape.y = selectedShape.y + oldH - newH;
+                        }
+                    } else {
+                        // 通常のリサイズ
+                        if (resizeHandle === 'se') {
+                            selectedShape.w += dx;
+                            selectedShape.h += dy;
+                        } else if (resizeHandle === 'sw') {
+                            selectedShape.w -= (mouseX - selectedShape.x);
+                            selectedShape.x = mouseX;
+                            selectedShape.h += dy;
+                        } else if (resizeHandle === 'ne') {
+                            selectedShape.w += dx;
+                            selectedShape.h -= (mouseY - selectedShape.y);
+                            selectedShape.y = mouseY;
+                        } else if (resizeHandle === 'nw') {
+                            selectedShape.w -= (mouseX - selectedShape.x);
+                            selectedShape.h -= (mouseY - selectedShape.y);
+                            selectedShape.x = mouseX;
+                            selectedShape.y = mouseY;
+                        }
+                    }
+                }
+                
+                redrawCanvas();
+                return;
+            }
+
+            if (currentTool === 'select' && isDragging && selectedShape) {
+                let newX = mouseX - dragOffsetX;
+                let newY = mouseY - dragOffsetY;
+                
+                // Shiftキー押下時：水平または垂直方向に制約
+                if (isShiftPressed) {
+                    const deltaX = Math.abs(newX - dragStartX);
+                    const deltaY = Math.abs(newY - dragStartY);
+                    
+                    if (deltaX > deltaY) {
+                        // 水平移動
+                        newY = dragStartY;
+                    } else {
+                        // 垂直移動
+                        newX = dragStartX;
+                    }
+                }
+                
+                selectedShape.x = newX;
+                selectedShape.y = newY;
+                
+                redrawCanvas();
+                return;
+            }
+
+            if (!isDrawing || !currentTool) return;
+
+            let currentX = mouseX;
+            let currentY = mouseY;
+
+            // Shiftキー押下時の制約
+            if (isShiftPressed) {
+                if (currentTool === 'line' || currentTool === 'arrow') {
+                    // 線・矢印：水平・垂直・45度に制約
+                    const dx = currentX - startX;
+                    const dy = currentY - startY;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        currentY = startY;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        currentX = startX;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        currentX = startX + dist * Math.sign(dx);
+                        currentY = startY + dist * Math.sign(dy);
+                    }
+                } else if (currentTool === 'rect' || currentTool === 'highlight') {
+                    // 矩形・塗潰し：正方形に制約
+                    const dx = currentX - startX;
+                    const dy = currentY - startY;
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    currentX = startX + size * Math.sign(dx);
+                    currentY = startY + size * Math.sign(dy);
+                }
+                // 円は常に正円なのでShiftキー制約不要
+            }
+
+            redrawCanvas();
+
+            const width = parseInt(document.getElementById('lineWidth').value);
+
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = width;
+            ctx.fillStyle = currentColor;
+
+            if (currentTool === 'rect') {
+                ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            } else if (currentTool === 'circle') {
+                ctx.beginPath();
+                const radius = Math.sqrt((currentX - startX) ** 2 + (currentY - startY) ** 2) / 2;
+                ctx.arc(startX + (currentX - startX) / 2, startY + (currentY - startY) / 2, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (currentTool === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+            } else if (currentTool === 'arrow') {
+                drawArrow({
+                    x: startX,
+                    y: startY,
+                    w: currentX - startX,
+                    h: currentY - startY,
+                    color: currentColor,
+                    width: width
+                });
+            } else if (currentTool === 'highlight') {
+                const opacityValue = parseInt(document.getElementById('fillOpacity').value);
+                const opacity = opacityValue / 100;  // 0=透過なし、100=完全透過 → 0=1.0、100=0.0
+                const actualOpacity = 1 - opacity;
+                const r = parseInt(currentColor.slice(1, 3), 16);
+                const g = parseInt(currentColor.slice(3, 5), 16);
+                const b = parseInt(currentColor.slice(5, 7), 16);
+                const highlightColor = `rgba(${r}, ${g}, ${b}, ${actualOpacity})`;
+                ctx.fillStyle = highlightColor;
+                ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle = null;
+                return;
+            }
+
+            if (isDragging) {
+                isDragging = false;
+                return;
+            }
+
+            if (!isDrawing || !currentTool) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let endX = (e.clientX - rect.left) * scaleX;
+            let endY = (e.clientY - rect.top) * scaleY;
+
+            // Shiftキー押下時の制約（mouseupでも適用）
+            if (isShiftPressed) {
+                if (currentTool === 'line' || currentTool === 'arrow') {
+                    // 線・矢印：水平・垂直・45度に制約
+                    const dx = endX - startX;
+                    const dy = endY - startY;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        endY = startY;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        endX = startX;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        endX = startX + dist * Math.sign(dx);
+                        endY = startY + dist * Math.sign(dy);
+                    }
+                } else if (currentTool === 'rect' || currentTool === 'highlight') {
+                    // 矩形・塗潰し：正方形に制約
+                    const dx = endX - startX;
+                    const dy = endY - startY;
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    endX = startX + size * Math.sign(dx);
+                    endY = startY + size * Math.sign(dy);
+                }
+            }
+
+            const width = parseInt(document.getElementById('lineWidth').value);
+
+            const opacityValue = parseInt(document.getElementById('fillOpacity').value);
+            const opacity = opacityValue / 100;
+            
+            const shape = {
+                type: currentTool,
+                x: startX,
+                y: startY,
+                w: endX - startX,
+                h: endY - startY,
+                color: currentColor,
+                width: width,
+                opacity: opacity
+            };
+
+            shapes.push(shape);
+            isDrawing = false;
+            redrawCanvas();
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            
+            // ポリライン終了
+            if (isPolylineActive && polylinePoints.length > 1) {
+                shapes.push({
+                    type: 'polyline',
+                    points: [...polylinePoints],
+                    color: currentColor,
+                    width: parseInt(document.getElementById('lineWidth').value),
+                    opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                });
+                polylinePoints = [];
+                isPolylineActive = false;
+                redrawCanvas();
+                showToast('連続線を追加しました');
+                return;
+            }
+            
+            if (currentTool !== 'select' || !selectedShape) return;
+
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.classList.add('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                document.getElementById('contextMenu').classList.remove('active');
+            }
+        });
+
+        function editSelectedShape() {
+            if (!selectedShape) return;
+            
+            if (selectedShape.type === 'text') {
+                pendingTextPosition = { x: selectedShape.x, y: selectedShape.y };
+                document.getElementById('textInput').value = selectedShape.text;
+                showTextPopup(window.innerWidth / 2, window.innerHeight / 2);
+            }
+            
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function duplicateSelectedShape() {
+            if (!selectedShape) return;
+            
+            const newShape = JSON.parse(JSON.stringify(selectedShape));
+            newShape.x += 20;
+            newShape.y += 20;
+            shapes.push(newShape);
+            selectedShape = newShape;
+            redrawCanvas();
+            
+            document.getElementById('contextMenu').classList.remove('active');
+            showToast('図形を複製しました');
+        }
+
+        function deleteSelectedShape() {
+            if (!selectedShape) return;
+            
+            const index = shapes.indexOf(selectedShape);
+            if (index > -1) {
+                shapes.splice(index, 1);
+                selectedShape = null;
+                redrawCanvas();
+                showToast('図形を削除しました');
+            }
+            
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function showTextPopup(x, y) {
+            const popup = document.getElementById('textPopup');
+            const input = document.getElementById('textInput');
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            popup.classList.add('active');
+            input.focus();
+            input.select();
+        }
+
+        function confirmText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('テキストを入力してください');
+                return;
+            }
+
+            if (pendingTextPosition) {
+                const fontSize = parseInt(document.getElementById('fontSize').value);
+                
+                if (selectedShape && selectedShape.type === 'text') {
+                    selectedShape.text = text;
+                    selectedShape.fontSize = fontSize;
+                    selectedShape.color = currentColor;
+                } else {
+                    shapes.push({
+                        type: 'text',
+                        x: pendingTextPosition.x,
+                        y: pendingTextPosition.y,
+                        text: text,
+                        fontSize: fontSize,
+                        color: currentColor,
+                        opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                    });
+                }
+                redrawCanvas();
+            }
+
+            document.getElementById('textPopup').classList.remove('active');
+            document.getElementById('textInput').value = '';
+            pendingTextPosition = null;
+        }
+
+        function cancelText() {
+            document.getElementById('textPopup').classList.remove('active');
+            document.getElementById('textInput').value = '';
+            pendingTextPosition = null;
+        }
+
+        document.getElementById('textInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmText();
+            }
+        });
+
+        function updateShapeCount() {
+            document.getElementById('shapeCount').textContent = shapes.length;
+        }
+
+        function updateZoom() {
+            canvas.style.transform = `scale(${zoom})`;
+            canvas.style.transformOrigin = 'center center';
+            document.getElementById('zoomLevel').textContent = Math.round(zoom * 100);
+        }
+
+        function zoomIn() {
+            zoom = Math.min(zoom + 0.1, 3.0);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            zoom = Math.max(zoom - 0.1, 0.5);
+            updateZoom();
+        }
+
+        function zoomReset() {
+            zoom = 1.0;
+            updateZoom();
+        }
+
+        function undoLast() {
+            if (shapes.length === 0) {
+                showToast('削除する図形がありません', 'warning');
+                return;
+            }
+            shapes.pop();
+            selectedShape = null;
+            redrawCanvas();
+            showToast('取り消しました');
+        }
+
+        function clearAll() {
+            if (!confirm('すべての図形を削除しますか？')) return;
+            shapes = [];
+            selectedShape = null;
+            redrawCanvas();
+            showToast('すべて削除しました');
+        }
+
+        async function saveImage() {
+            if (!backgroundImage) {
+                alert('保存する画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            const tempSelected = selectedShape;
+            selectedShape = null;
+            redrawCanvas();
+
+            let filename = document.getElementById('fileNameHeader').value.trim();
+            if (!filename) {
+                const now = new Date();
+                filename = `capture_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+            }
+            filename += '.png';
+
+            canvas.toBlob(async (blob) => {
+                let saved = false;
+                
+                if (saveDirectoryHandle) {
+                    try {
+                        const fileHandle = await saveDirectoryHandle.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+
+                        savedCount++;
+                        document.getElementById('savedCount').textContent = savedCount;
+                        showToast(`指定フォルダに保存: ${filename}`);
+                        saved = true;
+                    } catch (err) {
+                        console.error('指定フォルダへの保存失敗:', err);
+                        showToast('指定フォルダへの保存に失敗しました', 'warning');
+                    }
+                }
+                
+                if (!saved) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    savedCount++;
+                    document.getElementById('savedCount').textContent = savedCount;
+                    showToast(`ダウンロードフォルダに保存: ${filename}`);
+                }
+
+                selectedShape = tempSelected;
+                redrawCanvas();
+            });
+        }
+
+        function quickSave() {
+            saveImage();
+        }
+
+        // クリップボードにコピー
+        async function copyToClipboard() {
+            if (!backgroundImage) {
+                alert('コピーする画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            const tempSelected = selectedShape;
+            selectedShape = null;
+            redrawCanvas();
+
+            try {
+                // CanvasをBlobに変換
+                canvas.toBlob(async (blob) => {
+                    try {
+                        // ClipboardItem を作成してクリップボードに書き込み
+                        const clipboardItem = new ClipboardItem({ 'image/png': blob });
+                        await navigator.clipboard.write([clipboardItem]);
+                        
+                        showToast('画像をクリップボードにコピーしました');
+                    } catch (err) {
+                        console.error('クリップボードコピーエラー:', err);
+                        alert('クリップボードへのコピーに失敗しました。\n\nブラウザがClipboard APIに対応していない可能性があります。');
+                    } finally {
+                        selectedShape = tempSelected;
+                        redrawCanvas();
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('画像変換エラー:', err);
+                alert('画像の変換に失敗しました。');
+                selectedShape = tempSelected;
+                redrawCanvas();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.background = type === 'success' ? '#28a745' : '#ffc107';
+            toast.classList.add('active');
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                isShiftPressed = true;
+            }
+            
+            if (e.ctrlKey && e.key === 'v') {
+                e.preventDefault();
+                pasteFromClipboard();
+            } else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                quickSave();
+            } else if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undoLast();
+            } else if (e.key === 'Delete' && selectedShape) {
+                deleteSelectedShape();
+            } else if (e.ctrlKey && e.key === 'd' && selectedShape) {
+                e.preventDefault();
+                duplicateSelectedShape();
+            } else if (e.key === 'Escape') {
+                if (isPolylineActive) {
+                    polylinePoints = [];
+                    isPolylineActive = false;
+                    redrawCanvas();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                isShiftPressed = false;
+            }
+        });
+
+        document.querySelector('.color-btn[data-color="#FF0000"]').classList.add('active');
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        // DOMロード後にLucideアイコン初期化
+        lucide.createIcons();
+    </script>
+</body>
+</html>

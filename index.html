@@ -1,0 +1,4415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画面キャプチャ編集ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Meiryo, "Hiragino Kaku Gothic Pro", sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #005BAB 0%, #003d7a 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 110px);
+        }
+
+        .sidebar {
+            width: 560px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding: 15px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            align-content: start;
+        }
+
+        .tool-section {
+            margin-bottom: 0;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: visible;
+            position: relative;
+            z-index: auto;
+        }
+
+        .tool-section h3 {
+            font-size: 10px;
+            color: #005BAB;
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+
+        /* タブボタン */
+        .tab-buttons {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #005BAB;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .tool-btn {
+            padding: 6px 3px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 9px;
+            color: #495057;
+            font-weight: 500;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .tool-btn:hover {
+            border-color: #005BAB;
+            color: #005BAB;
+            transform: translateY(-1px);
+        }
+
+        .tool-btn.active {
+            background: #005BAB;
+            color: white;
+            border-color: #005BAB;
+        }
+
+        .tool-icon {
+            font-size: 18px;
+        }
+
+        .quick-color-bar {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-btn.active {
+            border: 3px solid #005BAB;
+            box-shadow: 0 0 0 2px rgba(0,91,171,0.2);
+        }
+
+        .slider-group {
+            margin-top: 4px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+            font-size: 10px;
+            color: #6c757d;
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: #005BAB;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #005BAB;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #005BAB;
+            cursor: pointer;
+            border: none;
+        }
+
+        .text-input-inline {
+            width: 100%;
+            padding: 8px 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .text-input-inline:focus {
+            outline: none;
+            border-color: #005BAB;
+            box-shadow: 0 0 0 3px rgba(0,91,171,0.1);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .action-btn.primary {
+            background: #005BAB;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: #003d7a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,91,171,0.3);
+        }
+
+        .action-btn.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .action-btn.success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .action-btn.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .action-btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .action-btn.danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .action-btn.danger:hover {
+            background: #c82333;
+        }
+
+        .action-btn.warning {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .action-btn.warning:hover {
+            background: #e0a800;
+        }
+
+        .canvas-area {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #f1f3f5;
+        }
+
+        .top-toolbar {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding-right: 15px;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #495057;
+        }
+
+        .toolbar-btn:hover {
+            border-color: #005BAB;
+            color: #005BAB;
+            transform: translateY(-1px);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .canvas-size-overlay {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 91, 171, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .preset-btn {
+            padding: 6px 12px;
+            background: #e7f3ff;
+            border: 1px solid #005BAB;
+            border-radius: 4px;
+            color: #005BAB;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .preset-btn:hover {
+            background: #005BAB;
+            color: white;
+        }
+
+        .preset-hidden {
+            display: none !important;
+        }
+
+        /* ツールチップ */
+        /* ツールチップ基本設定 */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        /* ホバー時に要素自体を最前面に */
+        [data-tooltip]:hover {
+            z-index: 100000;
+            position: relative;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-5px);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 99999;
+            text-align: center;
+        }
+
+        [data-tooltip]::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 99999;
+        }
+
+        [data-tooltip]:hover::after,
+        [data-tooltip]:hover::before {
+            opacity: 1;
+        }
+
+        /* ヘッダーボタンのツールチップは下向きに表示 */
+        .header-btn[data-tooltip]::after {
+            bottom: auto;
+            top: 100%;
+            transform: translateX(-50%) translateY(5px);
+        }
+
+        .header-btn[data-tooltip]::before {
+            bottom: auto;
+            top: 100%;
+            border-top-color: transparent;
+            border-bottom-color: rgba(0, 0, 0, 0.9);
+            transform: translateX(-50%) translateY(-4px);
+        }
+
+        /* サイドバー内のツールチップは左寄せで表示 */
+        .sidebar [data-tooltip]::after {
+            left: 0;
+            transform: translateX(0) translateY(-5px);
+            max-width: 250px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .sidebar [data-tooltip]::before {
+            left: 20px;
+            transform: translateX(0) translateY(4px);
+        }
+
+        .sidebar [data-tooltip]:hover::after {
+            left: 0;
+            transform: translateX(0) translateY(-5px);
+        }
+
+        /* サイドバー上部の描画ツールは下向きに表示 */
+        .sidebar .tool-section:nth-child(1) [data-tooltip]::after,
+        .sidebar .tool-section:nth-child(2) [data-tooltip]::after {
+            bottom: auto;
+            top: 100%;
+            transform: translateX(0) translateY(5px);
+        }
+
+        .sidebar .tool-section:nth-child(1) [data-tooltip]::before,
+        .sidebar .tool-section:nth-child(2) [data-tooltip]::before {
+            bottom: auto;
+            top: 100%;
+            border-top-color: transparent;
+            border-bottom-color: rgba(0, 0, 0, 0.9);
+            transform: translateX(20px) translateY(-4px);
+        }
+
+        .sidebar .tool-section:nth-child(1) [data-tooltip]:hover::after,
+        .sidebar .tool-section:nth-child(2) [data-tooltip]:hover::after {
+            transform: translateX(0) translateY(5px);
+        }
+
+        #canvas {
+            border: 2px solid #dee2e6;
+            background: white;
+            cursor: crosshair;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #canvas.select-mode {
+            cursor: default;
+        }
+
+        .info-badge {
+            background: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #0277bd;
+            margin-top: 6px;
+            line-height: 1.3;
+        }
+
+        .folder-badge {
+            background: #fff3cd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            color: #856404;
+            margin-top: 6px;
+            word-break: break-all;
+            max-height: 40px;
+            overflow-y: auto;
+        }
+
+        .stats-inline {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+        }
+
+        .stat-value {
+            color: #005BAB;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .text-popup {
+            display: none;
+            position: fixed;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9998;
+            min-width: 300px;
+        }
+
+        .text-popup.active {
+            display: block;
+        }
+
+        .text-popup input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .text-popup input:focus {
+            outline: none;
+            border-color: #005BAB;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .popup-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .popup-btn.ok {
+            background: #005BAB;
+            color: white;
+        }
+
+        .popup-btn.ok:hover {
+            background: #003d7a;
+        }
+
+        .popup-btn.cancel {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .popup-btn.cancel:hover {
+            background: #dee2e6;
+        }
+
+        /* 画像スタンプスタイル */
+        .stamp-item {
+            position: relative;
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stamp-item:hover {
+            border-color: #005BAB;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,91,171,0.15);
+        }
+
+        .stamp-item .stamp-preview {
+            width: 60px;
+            height: 60px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .stamp-item .stamp-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .stamp-item .stamp-name {
+            font-weight: 600;
+            color: #495057;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        .stamp-item .stamp-delete {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .stamp-item:hover .stamp-delete {
+            display: flex;
+        }
+
+        .stamp-item .stamp-delete:hover {
+            background: #c82333;
+        }
+
+        #stampList:empty::after {
+            content: "画像スタンプがありません";
+            display: block;
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            font-size: 12px;
+            grid-column: 1 / -1;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10002;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9999;
+            padding: 5px 0;
+            min-width: 150px;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #ffe6e6;
+            color: #dc3545;
+        }
+
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background: #005BAB;
+            border: 2px solid white;
+            position: absolute;
+            cursor: nwse-resize;
+            box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        }
+
+        .trim-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trim-overlay.active {
+            display: flex;
+        }
+
+        .trim-container {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .trim-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i data-lucide="camera" style="width: 20px; height: 20px; vertical-align: middle;"></i> 画面キャプチャ編集ツール</h1>
+            <div class="header-actions">
+                <input type="text" id="fileNameHeader" class="text-input-inline" placeholder="ファイル名（任意）" value="" style="width: 200px; margin: 0;">
+                <button class="header-btn" onclick="selectSaveFolder()" data-tooltip="保存先フォルダを選択"><i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 保存先選択</button>
+                <button class="header-btn" onclick="pasteFromClipboard()" data-tooltip="クリップボードから画像を貼り付け (Ctrl+V)"><i data-lucide="clipboard" style="width: 14px; height: 14px; vertical-align: middle;"></i> 貼り付け (Ctrl+V)</button>
+                <button class="header-btn" onclick="copyToClipboard()" data-tooltip="画像をクリップボードにコピー"><i data-lucide="clipboard-copy" style="width: 14px; height: 14px; vertical-align: middle;"></i> クリップボードにコピー</button>
+                <div style="position: relative; display: inline-block;">
+                    <button class="header-btn" onclick="toggleExportMenu()" data-tooltip="保存形式を選択 (PNG/JPEG/PDF/SVG)">
+                        <i data-lucide="save" style="width: 14px; height: 14px; vertical-align: middle;"></i> 保存
+                    </button>
+                    <div id="exportMenu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; margin-top: 4px; min-width: 160px;">
+                        <button onclick="quickSave()" style="width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 14px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                            <i data-lucide="image" style="width: 14px; height: 14px; vertical-align: middle;"></i> PNGで保存 (Ctrl+S)
+                        </button>
+                        <button onclick="exportAsJPEG()" style="width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 14px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                            <i data-lucide="image" style="width: 14px; height: 14px; vertical-align: middle;"></i> JPEGで保存...
+                        </button>
+                        <button onclick="exportAsPDF()" style="width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 14px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                            <i data-lucide="file-text" style="width: 14px; height: 14px; vertical-align: middle;"></i> PDFで保存
+                        </button>
+                        <button onclick="exportAsSVG()" style="width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 14px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                            <i data-lucide="code" style="width: 14px; height: 14px; vertical-align: middle;"></i> SVGで保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <!-- タブボタン -->
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="io-edit">
+                        <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle;"></i> 読込/編集
+                    </button>
+                    <button class="tab-button" data-tab="draw-settings">
+                        <i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle;"></i> 描画/設定
+                    </button>
+                    <button class="tab-button" data-tab="stamps">
+                        <i data-lucide="image" style="width: 14px; height: 14px; vertical-align: middle;"></i> スタンプ
+                    </button>
+                </div>
+
+                <div class="tool-section" data-content="io-edit">
+                    <h3><i data-lucide="camera" style="width: 14px; height: 14px; vertical-align: middle;"></i> 読み込み</h3>
+                    <button class="action-btn primary" onclick="pasteFromClipboard()" data-tooltip="クリップボードから画像を貼り付け (Ctrl+V)">
+                        <i data-lucide="clipboard" style="width: 16px; height: 16px;"></i> クリップボード
+                    </button>
+                    <button class="action-btn secondary" onclick="loadImageFile()" data-tooltip="画像ファイルを開く">
+                        <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i> ファイル選択
+                    </button>
+                    <button class="action-btn warning" onclick="captureScreen()" data-tooltip="画面をキャプチャ">
+                        <i data-lucide="monitor" style="width: 16px; height: 16px;"></i> 画面キャプチャ
+                    </button>
+                    <button class="action-btn secondary" onclick="startTrimMode()" id="trimBtn" disabled data-tooltip="画像をトリミング">
+                        <i data-lucide="crop" style="width: 16px; height: 16px;"></i> トリミング
+                    </button>
+                    <button class="action-btn secondary" onclick="resizeByInput()" id="resizeInputBtn" disabled data-tooltip="画像サイズを変更">
+                        <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i> サイズ変更
+                    </button>
+                    <div style="grid-column: 1 / -1; display: flex; gap: 5px; flex-wrap: wrap;" id="presetContainer" class="preset-hidden">
+                        <button class="preset-btn" onclick="resizeToPreset(1920, 1080)" data-tooltip="フルHDサイズに変更">1920×1080</button>
+                        <button class="preset-btn" onclick="resizeToPreset(1280, 720)" data-tooltip="HD 720pサイズに変更">1280×720</button>
+                        <button class="preset-btn" onclick="resizeToPreset(800, 600)" data-tooltip="SVGA サイズに変更">800×600</button>
+                        <button class="preset-btn" onclick="resizeByPercent(50)" data-tooltip="50%に縮小">50%</button>
+                        <button class="preset-btn" onclick="resizeByPercent(200)" data-tooltip="200%に拡大">200%</button>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                    <div class="info-badge">
+                        <i data-lucide="lightbulb" style="width: 12px; height: 12px; vertical-align: middle;"></i> Win+Shift+S でスクショ後に「クリップボード」
+                    </div>
+                    <div class="folder-badge" id="folderDisplay">
+                        未選択（ブラウザのダウンロードフォルダ）
+                    </div>
+                </div>
+
+                <div class="tool-section" data-content="draw-settings" style="grid-column: 1 / -1;" hidden>
+                    <h3><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle;"></i> 描画ツール</h3>
+                    <div class="btn-grid">
+                        <button class="tool-btn" onclick="selectTool('select')" data-tooltip="図形を選択・移動・編集">
+                            <i data-lucide="mouse-pointer" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>選択</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('rect')" data-tooltip="矩形を描画 (Shiftで正方形)">
+                            <i data-lucide="square" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>矩形</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('circle')" data-tooltip="円を描画 (Shiftで真円)">
+                            <i data-lucide="circle" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>円</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('line')" data-tooltip="直線を描画 (Shiftで45度単位)">
+                            <i data-lucide="minus" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>線</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('arrow')" data-tooltip="矢印を描画 (Shiftで45度単位)">
+                            <i data-lucide="arrow-right" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>矢印</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('polyline')" data-tooltip="連続線を描画 (右クリックで終了)">
+                            <i data-lucide="git-branch" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>連続線</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('freehand')" data-tooltip="フリーハンドで描画">
+                            <i data-lucide="pencil" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>フリーハンド</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('text')" data-tooltip="テキストを追加">
+                            <i data-lucide="type" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>テキスト</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('highlight')" data-tooltip="半透明の矩形でハイライト">
+                            <i data-lucide="highlighter" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>ハイライト</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('mosaic')" data-tooltip="モザイク処理">
+                            <i data-lucide="grid-3x3" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>モザイク</span>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('blur')" data-tooltip="ぼかし処理">
+                            <i data-lucide="droplet" class="tool-icon" style="width: 18px; height: 18px;"></i>
+                            <span>ぼかし</span>
+                        </button>
+                    </div>
+                    <div class="info-badge">
+                        <i data-lucide="edit" style="width: 12px; height: 12px; vertical-align: middle;"></i> 選択ツールで図形をダブルクリック→編集<br>
+                        <i data-lucide="git-branch" style="width: 12px; height: 12px; vertical-align: middle;"></i> 連続線: クリック連続で線を引く（右クリックで終了）
+                    </div>
+                </div>
+
+                <div class="tool-section" data-content="draw-settings" style="grid-column: 1 / -1;" hidden>
+                    <h3><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle;"></i> 色選択</h3>
+                    <div class="quick-color-bar">
+                        <!-- 赤系 -->
+                        <div class="color-btn" style="background: #FF0000;" onclick="selectColor('#FF0000')" data-color="#FF0000" title="赤"></div>
+                        <div class="color-btn" style="background: #FF5252;" onclick="selectColor('#FF5252')" data-color="#FF5252" title="明るい赤"></div>
+                        <div class="color-btn" style="background: #C62828;" onclick="selectColor('#C62828')" data-color="#C62828" title="暗い赤"></div>
+                        
+                        <!-- オレンジ系 -->
+                        <div class="color-btn" style="background: #FF961C;" onclick="selectColor('#FF961C')" data-color="#FF961C" title="オレンジ"></div>
+                        <div class="color-btn" style="background: #FF6F00;" onclick="selectColor('#FF6F00')" data-color="#FF6F00" title="濃いオレンジ"></div>
+                        
+                        <!-- 黄色系 -->
+                        <div class="color-btn" style="background: #FFEB3B;" onclick="selectColor('#FFEB3B')" data-color="#FFEB3B" title="黄色"></div>
+                        <div class="color-btn" style="background: #FDD835;" onclick="selectColor('#FDD835')" data-color="#FDD835" title="濃い黄色"></div>
+                        
+                        <!-- 緑系 -->
+                        <div class="color-btn" style="background: #4CAF50;" onclick="selectColor('#4CAF50')" data-color="#4CAF50" title="緑"></div>
+                        <div class="color-btn" style="background: #66BB6A;" onclick="selectColor('#66BB6A')" data-color="#66BB6A" title="明るい緑"></div>
+                        <div class="color-btn" style="background: #2E7D32;" onclick="selectColor('#2E7D32')" data-color="#2E7D32" title="暗い緑"></div>
+                        
+                        <!-- 青系 -->
+                        <div class="color-btn" style="background: #2196F3;" onclick="selectColor('#2196F3')" data-color="#2196F3" title="青"></div>
+                        <div class="color-btn" style="background: #1976D2;" onclick="selectColor('#1976D2')" data-color="#1976D2" title="濃い青"></div>
+                        <div class="color-btn" style="background: #005BAB;" onclick="selectColor('#005BAB')" data-color="#005BAB" title="コーポレートブルー"></div>
+                        
+                        <!-- 紫・ピンク系 -->
+                        <div class="color-btn" style="background: #9C27B0;" onclick="selectColor('#9C27B0')" data-color="#9C27B0" title="紫"></div>
+                        <div class="color-btn" style="background: #E91E63;" onclick="selectColor('#E91E63')" data-color="#E91E63" title="ピンク"></div>
+                        
+                        <!-- グレー・モノトーン -->
+                        <div class="color-btn" style="background: #000000;" onclick="selectColor('#000000')" data-color="#000000" title="黒"></div>
+                        <div class="color-btn" style="background: #424242;" onclick="selectColor('#424242')" data-color="#424242" title="濃いグレー"></div>
+                        <div class="color-btn" style="background: #757575;" onclick="selectColor('#757575')" data-color="#757575" title="グレー"></div>
+                        <div class="color-btn" style="background: #BDBDBD;" onclick="selectColor('#BDBDBD')" data-color="#BDBDBD" title="明るいグレー"></div>
+                        <div class="color-btn" style="background: #FFFFFF; border-color: #999;" onclick="selectColor('#FFFFFF')" data-color="#FFFFFF" title="白"></div>
+                    </div>
+                    <button class="action-btn secondary" onclick="openCustomColorPicker()" data-tooltip="カスタム色を選択" style="margin-top: 8px;">
+                        <i data-lucide="palette" style="width: 16px; height: 16px;"></i> カスタム色
+                    </button>
+                </div>
+
+                <div class="tool-section" data-content="draw-settings" style="grid-column: 1 / -1;" hidden>
+                    <h3><i data-lucide="settings" style="width: 14px; height: 14px; vertical-align: middle;"></i> 設定</h3>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>線の太さ</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="lineWidthInput" min="1" max="20" value="3"
+                                    style="width: 50px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateSliderFromInput('lineWidth')">
+                                <span>px</span>
+                            </div>
+                        </div>
+                        <input type="range" id="lineWidth" min="1" max="20" value="3" oninput="updateSlider('lineWidth')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>文字サイズ</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="fontSizeInput" min="12" max="72" value="24"
+                                    style="width: 50px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateSliderFromInput('fontSize')">
+                                <span>px</span>
+                            </div>
+                        </div>
+                        <input type="range" id="fontSize" min="12" max="72" value="24" oninput="updateSlider('fontSize')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>図形透過性</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="fillOpacityInput" min="0" max="100" value="0"
+                                    style="width: 50px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateSliderFromInput('fillOpacity')">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        <input type="range" id="fillOpacity" min="0" max="100" value="0" oninput="updateSlider('fillOpacity')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>モザイクサイズ</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="mosaicSizeInput" min="5" max="50" value="10"
+                                    style="width: 50px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateSliderFromInput('AppState.mosaicSize')">
+                                <span>px</span>
+                            </div>
+                        </div>
+                        <input type="range" id="mosaicSize" min="5" max="50" value="10" oninput="updateSlider('mosaicSize')">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>ぼかし強度</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="blurStrengthInput" min="1" max="20" value="10"
+                                    style="width: 50px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateSliderFromInput('AppState.blurStrength')">
+                                <span>px</span>
+                            </div>
+                        </div>
+                        <input type="range" id="blurStrength" min="1" max="20" value="10" oninput="updateSlider('blurStrength')">
+                    </div>
+                    <div class="slider-group" id="rotationGroup" style="display: none;">
+                        <div class="slider-label">
+                            <span><i data-lucide="rotate-cw" style="width: 14px; height: 14px; vertical-align: middle;"></i> 回転角度</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="rotationAngleInput" min="0" max="360" value="0" step="1"
+                                    style="width: 60px; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; text-align: center;"
+                                    onchange="updateRotationFromInput()">
+                                <span>°</span>
+                            </div>
+                        </div>
+                        <input type="range" id="rotationAngle" min="0" max="360" value="0" step="1" oninput="updateRotationSlider()">
+                    </div>
+                    <div class="stats-inline">
+                        <div class="stat-item">
+                            <span class="stat-label">保存数</span>
+                            <span class="stat-value" id="savedCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">図形数</span>
+                            <span class="stat-value" id="shapeCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-section" data-content="io-edit">
+                    <h3><i data-lucide="wrench" style="width: 14px; height: 14px; vertical-align: middle;"></i> 編集</h3>
+                    <button class="action-btn secondary" onclick="undoLast()" data-tooltip="直前の操作を取り消し (Ctrl+Z)">
+                        <i data-lucide="undo" style="width: 16px; height: 16px;"></i> 取り消し (Ctrl+Z)
+                    </button>
+                    <button class="action-btn danger" onclick="clearAll()" data-tooltip="すべての図形を削除">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> すべて削除
+                    </button>
+                </div>
+
+                <!-- 画像スタンプセクション -->
+                <div class="tool-section" data-content="stamps" style="grid-column: 1 / -1;" hidden>
+                    <h3><i data-lucide="image" style="width: 14px; height: 14px; vertical-align: middle;"></i> 画像スタンプ</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px;">
+                        <button class="action-btn primary" onclick="addImageStamp()" data-tooltip="画像ファイル（BMP/JPEG/PNG/GIF）を読み込んでスタンプとして登録">
+                            <i data-lucide="image-plus" style="width: 16px; height: 16px;"></i> 画像追加
+                        </button>
+                        <button class="action-btn primary" onclick="addImageStampFolder()" data-tooltip="フォルダ内の全画像を一括読み込み">
+                            <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i> フォルダ読込
+                        </button>
+                        <button class="action-btn secondary" onclick="clearAllStamps()" data-tooltip="登録済みスタンプをすべて削除" style="grid-column: 1 / -1;">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> 全削除
+                        </button>
+                    </div>
+                    <div id="stampList" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 200px; overflow-y: auto;">
+                        <!-- スタンプ一覧がここに表示される -->
+                    </div>
+                    <div class="info-badge" style="margin-top: 8px;">
+                        <i data-lucide="info" style="width: 12px; height: 12px; vertical-align: middle;"></i> 「画像追加」で画像をスタンプ登録<br>
+                        <i data-lucide="mouse-pointer" style="width: 12px; height: 12px; vertical-align: middle;"></i> スタンプをクリックでキャンバス中央に挿入
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-area">
+                <div class="top-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="zoomOut()" data-tooltip="表示を縮小"><i data-lucide="zoom-out" style="width: 16px; height: 16px;"></i></button>
+                        <button class="toolbar-btn" onclick="zoomReset()" data-tooltip="100%に戻す"><i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i></button>
+                        <button class="toolbar-btn" onclick="zoomIn()" data-tooltip="表示を拡大"><i data-lucide="zoom-in" style="width: 16px; height: 16px;"></i></button>
+                    </div>
+                    <div class="toolbar-group" style="border: none;">
+                        <span style="font-size: 12px; color: #6c757d;">ズーム: <strong id="zoomLevel">100</strong>%</span>
+                    </div>
+                    <div class="toolbar-group" style="border: none;">
+                        <span style="font-size: 12px; color: #6c757d;" id="canvasSize">キャンバス未作成</span>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <div id="canvasSizeOverlay" class="canvas-size-overlay"></div>
+                    <canvas id="canvas" width="800" height="600"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-popup" id="textPopup">
+        <input type="text" id="textInput" placeholder="テキストを入力してください" autocomplete="off">
+        <div class="popup-buttons">
+            <button class="popup-btn cancel" onclick="cancelText()">キャンセル</button>
+            <button class="popup-btn ok" onclick="confirmText()">OK</button>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editSelectedShape()">
+            <i data-lucide="edit" style="width: 14px; height: 14px;"></i> 編集
+        </div>
+        <div class="context-menu-item" id="rotateMenuItem" onclick="rotateSelectedShape()" style="display: none;">
+            <i data-lucide="rotate-cw" style="width: 14px; height: 14px;"></i> 90°回転
+        </div>
+        <div class="context-menu-item" onclick="duplicateSelectedShape()">
+            <i data-lucide="copy" style="width: 14px; height: 14px;"></i> 複製
+        </div>
+        <div class="context-menu-item" onclick="bringToFront()">
+            <i data-lucide="bring-to-front" style="width: 14px; height: 14px;"></i> 最前面へ
+        </div>
+        <div class="context-menu-item" onclick="sendToBack()">
+            <i data-lucide="send-to-back" style="width: 14px; height: 14px;"></i> 最背面へ
+        </div>
+        <div class="context-menu-item" onclick="toggleLock()">
+            <i data-lucide="lock" style="width: 14px; height: 14px;"></i> ロック切替
+        </div>
+        <div class="context-menu-item danger" onclick="deleteSelectedShape()">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> 削除
+        </div>
+    </div>
+
+    <div class="trim-overlay" id="trimOverlay">
+        <div class="trim-container">
+            <canvas id="trimCanvas"></canvas>
+            <div class="trim-controls">
+                <button class="popup-btn ok" onclick="confirmTrim()">トリミング実行</button>
+                <button class="popup-btn cancel" onclick="cancelTrim()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+
+    <!-- カスタムカラーピッカー -->
+    <div class="trim-overlay" id="colorPickerOverlay">
+        <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 400px;">
+            <h3 style="margin: 0 0 20px 0; color: #005BAB; font-size: 18px;">
+                <i data-lucide="palette" style="width: 18px; height: 18px; vertical-align: middle;"></i> カスタム色を選択
+            </h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #495057;">カラーピッカー</label>
+                    <input type="color" id="customColorInput" value="#FF0000"
+                        style="width: 100%; height: 60px; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #495057;">カラーコード (HEX)</label>
+                    <input type="text" id="customColorHex" value="#FF0000"
+                        placeholder="#000000"
+                        style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px;">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="popup-btn cancel" onclick="cancelCustomColor()" style="flex: 1;">キャンセル</button>
+                    <button class="popup-btn ok" onclick="confirmCustomColor()" style="flex: 1;">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ========================================
+    // モジュール化: IIFE (即時実行関数式)
+    // ========================================
+    (function() {
+        'use strict';
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        // ========================================
+        // アプリケーション状態管理オブジェクト
+        // ========================================
+        const AppState = {
+            // 描画ツール関連
+            currentTool: null,
+            currentColor: '#FF0000',
+
+            // 描画状態
+            isDrawing: false,
+            startX: 0,
+            startY: 0,
+
+            // 図形管理
+            shapes: [],
+            redoStack: [],
+            backgroundImage: null,
+
+            // スナップ機能
+            snapEnabled: false,
+            snapToGrid: false,
+            snapToObjects: false,
+            gridSize: 10,
+            snapTolerance: 8,
+            guidelines: [],
+
+            // スタイルプリセット
+            stylePresets: [
+                { name: '赤・太線', color: '#FF0000', lineWidth: 5, opacity: 0 },
+                { name: '青・細線', color: '#0000FF', lineWidth: 2, opacity: 0 },
+                { name: '黄・半透明', color: '#FFFF00', lineWidth: 3, opacity: 50 }
+            ],
+            currentPresetIndex: -1,
+
+            // UI状態
+            zoom: 1.0,
+            savedCount: 0,
+
+            // 編集状態
+            pendingTextPosition: null,
+            selectedShape: null,
+            isDragging: false,
+            isResizing: false,
+            isRotating: false,
+            resizeHandle: null,
+            dragOffsetX: 0,
+            dragOffsetY: 0,
+
+            // ファイル操作
+            saveDirectoryHandle: null,
+
+            // ポリライン・フリーハンド
+            polylinePoints: [],
+            freehandPoints: [],
+            isPolylineActive: false,
+
+            // その他
+            doubleClickTimer: null,
+            lastClickTime: 0,
+            trimMode: false,
+            trimRect: { x: 0, y: 0, w: 0, h: 0 },
+            isShiftPressed: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            mosaicSize: 10,
+            blurStrength: 10,
+            imageStamps: [],
+            imageCache: new Map(),
+
+            // IndexedDB
+            db: null
+        };
+
+         // Redo用スタック
+
+        // スナップ機能用変数 // px // px // 表示するガイドライン
+        
+        // スタイルプリセット用変数  // 回転中フラグ  // フリーハンド描画用のポイント配列  // 画像スタンプ配列  // 画像キャッシュ
+
+        // IndexedDB初期化
+        const dbName = 'ScreenCaptureTool';
+        const request = indexedDB.open(dbName, 1);
+        
+        request.onerror = () => console.error('IndexedDB初期化エラー');
+        request.onsuccess = (event) => {
+            AppState.db = event.target.result;
+            loadSavedDirectory();
+        };
+        request.onupgradeneeded = (event) => {
+            AppState.db = event.target.result;
+            if (!AppState.db.objectStoreNames.contains('settings')) {
+                AppState.db.createObjectStore('settings');
+            }
+        };
+
+        // 初期化
+        initCanvas();
+
+        function initCanvas() {
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#adb5bd';
+            ctx.font = '20px Meiryo';
+            ctx.textAlign = 'center';
+            ctx.fillText('Win+Shift+S でスクショ → 📋クリップボードボタン', canvas.width / 2, canvas.height / 2 - 10);
+            ctx.fillText('または 📁ファイル選択', canvas.width / 2, canvas.height / 2 + 20);
+        }
+
+        // 画面キャプチャ機能
+        async function captureScreen() {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: 'screen' }
+                });
+
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+
+                video.onloadedmetadata = () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = video.videoWidth;
+                    tempCanvas.height = video.videoHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(video, 0, 0);
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    loadImageToCanvas(tempCanvas.toDataURL('image/png'));
+                    showToast('画面をキャプチャしました');
+
+                    // ウィンドウを最前面に（複数回試行で確実に）
+                    setTimeout(() => {
+                        window.focus();
+                        if (window.opener) {
+                            window.opener.focus();
+                            window.focus();
+                        }
+                    }, 100);
+                };
+            } catch (err) {
+                if (err.name !== 'NotAllowedError') {
+                    alert('画面キャプチャに失敗しました。\n\nChrome、Edge（最新版）をご利用ください。');
+                }
+            }
+        }
+
+        // プリセットサイズでリサイズ
+        function resizeToPreset(width, height) {
+            if (!AppState.backgroundImage) return;
+
+            const currentWidth = canvas.width;
+            const currentHeight = canvas.height;
+
+            if (!confirm(`${currentWidth}×${currentHeight}px → ${width}×${height}px\nリサイズしますか？`)) {
+                return;
+            }
+
+            applyResize(width, height);
+        }
+
+        // パーセントでリサイズ
+        function resizeByPercent(percent) {
+            if (!AppState.backgroundImage) return;
+
+            const currentWidth = canvas.width;
+            const currentHeight = canvas.height;
+            const scale = percent / 100;
+            const newWidth = Math.round(currentWidth * scale);
+            const newHeight = Math.round(currentHeight * scale);
+
+            if (newWidth < 100 || newHeight < 100) {
+                alert('リサイズ後のサイズが小さすぎます（最小100px）');
+                return;
+            }
+
+            if (!confirm(`${currentWidth}×${currentHeight}px → ${newWidth}×${newHeight}px (${percent}%)\nリサイズしますか？`)) {
+                return;
+            }
+
+            applyResize(newWidth, newHeight);
+        }
+
+        // リサイズを適用
+        function applyResize(newWidth, newHeight) {
+            const currentWidth = canvas.width;
+            const currentHeight = canvas.height;
+
+            // スケール比を計算
+            const scaleX = newWidth / currentWidth;
+            const scaleY = newHeight / currentHeight;
+
+            // 全図形をスケーリング
+            AppState.shapes = AppState.shapes.map(shape => {
+                const newShape = { ...shape };
+
+                newShape.x = shape.x * scaleX;
+                newShape.y = shape.y * scaleY;
+                if (shape.w !== undefined) newShape.w = shape.w * scaleX;
+                if (shape.h !== undefined) newShape.h = shape.h * scaleY;
+
+                // ポリライン
+                if (shape.type === 'polyline' && shape.points) {
+                    newShape.points = shape.points.map(pt => ({
+                        x: pt.x * scaleX,
+                        y: pt.y * scaleY
+                    }));
+                }
+
+                // テキストフォントサイズ
+                if (shape.type === 'text' && shape.fontSize) {
+                    newShape.fontSize = Math.round(shape.fontSize * Math.min(scaleX, scaleY));
+                }
+
+                return newShape;
+            });
+
+            // キャンバスサイズ変更
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            redrawCanvas();
+            updateCanvasSize();
+            updateCanvasSizeOverlay();
+        }
+
+        // 数値入力でリサイズ
+        function resizeByInput() {
+            if (!AppState.backgroundImage) return;
+
+            const currentWidth = canvas.width;
+            const currentHeight = canvas.height;
+            const aspectRatio = currentWidth / currentHeight;
+
+            // リサイズ方法を選択
+            const method = prompt(
+                `リサイズ方法を選択してください：\n` +
+                `現在のサイズ: ${currentWidth} × ${currentHeight}px\n\n` +
+                `1: 幅を指定（高さは自動計算）\n` +
+                `2: 高さを指定（幅は自動計算）\n` +
+                `3: パーセントで指定\n\n` +
+                `番号を入力してください (1/2/3)`,
+                '1'
+            );
+
+            if (!method || !['1', '2', '3'].includes(method)) return;
+
+            let newWidth, newHeight;
+
+            if (method === '1') {
+                // 幅指定
+                const inputStr = prompt(`新しい幅を入力してください（現在: ${currentWidth}px）`, currentWidth);
+                if (!inputStr) return;
+                newWidth = parseInt(inputStr);
+                if (isNaN(newWidth) || newWidth < 100) {
+                    alert('100以上の数値を入力してください');
+                    return;
+                }
+                newHeight = Math.round(newWidth / aspectRatio);
+
+            } else if (method === '2') {
+                // 高さ指定
+                const inputStr = prompt(`新しい高さを入力してください（現在: ${currentHeight}px）`, currentHeight);
+                if (!inputStr) return;
+                newHeight = parseInt(inputStr);
+                if (isNaN(newHeight) || newHeight < 100) {
+                    alert('100以上の数値を入力してください');
+                    return;
+                }
+                newWidth = Math.round(newHeight * aspectRatio);
+
+            } else if (method === '3') {
+                // パーセント指定
+                const inputStr = prompt(`拡大率をパーセントで入力してください\n（100% = 現在のサイズ）`, '100');
+                if (!inputStr) return;
+                const percent = parseFloat(inputStr);
+                if (isNaN(percent) || percent <= 0) {
+                    alert('0より大きい数値を入力してください');
+                    return;
+                }
+                const scale = percent / 100;
+                newWidth = Math.round(currentWidth * scale);
+                newHeight = Math.round(currentHeight * scale);
+
+                if (newWidth < 100 || newHeight < 100) {
+                    alert('リサイズ後のサイズが小さすぎます（最小100px）');
+                    return;
+                }
+            }
+
+            // 確認
+            if (!confirm(`${currentWidth}×${currentHeight}px → ${newWidth}×${newHeight}px\nリサイズしますか？`)) {
+                return;
+            }
+
+            applyResize(newWidth, newHeight);
+        }
+
+        // トリミングモード
+        function startTrimMode() {
+            if (!AppState.backgroundImage) return;
+            
+            AppState.trimMode = true;
+            const trimCanvas = document.getElementById('trimCanvas');
+            const trimCtx = trimCanvas.getContext('2d');
+            
+            trimCanvas.width = canvas.width;
+            trimCanvas.height = canvas.height;
+            trimCtx.drawImage(AppState.backgroundImage, 0, 0);
+            
+            document.getElementById('trimOverlay').classList.add('active');
+            
+            let trimStartX, trimStartY, isTrimming = false;
+            
+            trimCanvas.onmousedown = (e) => {
+                const rect = trimCanvas.getBoundingClientRect();
+                trimStartX = (e.clientX - rect.left) * (trimCanvas.width / rect.width);
+                trimStartY = (e.clientY - rect.top) * (trimCanvas.height / rect.height);
+                isTrimming = true;
+            };
+            
+            trimCanvas.onmousemove = (e) => {
+                if (!isTrimming) return;
+                const rect = trimCanvas.getBoundingClientRect();
+                const currentX = (e.clientX - rect.left) * (trimCanvas.width / rect.width);
+                const currentY = (e.clientY - rect.top) * (trimCanvas.height / rect.height);
+                
+                trimCtx.clearRect(0, 0, trimCanvas.width, trimCanvas.height);
+                trimCtx.drawImage(AppState.backgroundImage, 0, 0);
+                
+                trimCtx.fillStyle = 'rgba(0,0,0,0.5)';
+                trimCtx.fillRect(0, 0, trimCanvas.width, trimCanvas.height);
+                
+                const w = currentX - trimStartX;
+                const h = currentY - trimStartY;
+                trimCtx.clearRect(trimStartX, trimStartY, w, h);
+                trimCtx.drawImage(AppState.backgroundImage, trimStartX, trimStartY, w, h, trimStartX, trimStartY, w, h);
+                
+                trimCtx.strokeStyle = '#005BAB';
+                trimCtx.lineWidth = 3;
+                trimCtx.strokeRect(trimStartX, trimStartY, w, h);
+                
+                AppState.trimRect = { x: trimStartX, y: trimStartY, w: w, h: h };
+            };
+            
+            trimCanvas.onmouseup = () => {
+                isTrimming = false;
+            };
+        }
+
+        function confirmTrim() {
+            if (AppState.trimRect.w === 0 || AppState.trimRect.h === 0) {
+                alert('トリミング範囲を選択してください');
+                return;
+            }
+            
+            const tempCanvas = document.createElement('canvas');
+            const x = Math.min(AppState.trimRect.x, AppState.trimRect.x + AppState.trimRect.w);
+            const y = Math.min(AppState.trimRect.y, AppState.trimRect.y + AppState.trimRect.h);
+            const w = Math.abs(AppState.trimRect.w);
+            const h = Math.abs(AppState.trimRect.h);
+            
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(AppState.backgroundImage, x, y, w, h, 0, 0, w, h);
+            
+            loadImageToCanvas(tempCanvas.toDataURL('image/png'));
+            cancelTrim();
+            showToast('画像をトリミングしました');
+        }
+
+        function cancelTrim() {
+            AppState.trimMode = false;
+            document.getElementById('trimOverlay').classList.remove('active');
+            AppState.trimRect = { x: 0, y: 0, w: 0, h: 0 };
+        }
+
+        // フォルダパスを表示
+        async function displayFolderPath(handle) {
+            try {
+                // フォルダ名とアイコンを表示（完全パスはセキュリティ上取得不可）
+                const pathParts = [handle.name];
+                
+                // 親フォルダを遡って取得（可能な範囲で）
+                let currentHandle = handle;
+                let maxDepth = 5; // 最大5階層まで
+                
+                while (maxDepth > 0) {
+                    try {
+                        // Note: getParent()は一部のブラウザでは未実装
+                        if (currentHandle.getParent) {
+                            const parent = await currentHandle.getParent();
+                            if (parent) {
+                                pathParts.unshift(parent.name);
+                                currentHandle = parent;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    } catch {
+                        break;
+                    }
+                    maxDepth--;
+                }
+                
+                // パス表示を構築
+                const pathDisplay = pathParts.length > 1 
+                    ? `.../${pathParts.slice(-3).join('/')}` 
+                    : pathParts[0];
+                
+                document.getElementById('folderDisplay').innerHTML = `
+                    <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle; color: #005BAB;"></i> 
+                    <strong style="color: #005BAB;">${pathDisplay}</strong>
+                `;
+                lucide.createIcons();
+            } catch (err) {
+                console.error('パス表示エラー:', err);
+                // エラー時は名前のみ表示
+                document.getElementById('folderDisplay').innerHTML = `
+                    <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle; color: #005BAB;"></i> 
+                    <strong style="color: #005BAB;">${handle.name}</strong>
+                `;
+                lucide.createIcons();
+            }
+        }
+        
+        // 保存先フォルダ選択
+        async function selectSaveFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                alert('お使いのブラウザはフォルダ選択機能に対応していません。\n\nChrome、Edge（最新版）をご利用ください。\n\n※通常の保存はブラウザのダウンロードフォルダに保存されます。');
+                return;
+            }
+
+            try {
+                const options = { mode: 'readwrite' };
+                // 既存の保存先がある場合はそこから開始
+                if (AppState.saveDirectoryHandle) {
+                    options.startIn = AppState.saveDirectoryHandle;
+                }
+                
+                AppState.saveDirectoryHandle = await window.showDirectoryPicker(options);
+                
+                // フォルダパスを構築して表示
+                await displayFolderPath(AppState.saveDirectoryHandle);
+                showToast(`保存先を設定しました`);
+                
+                // IndexedDBに保存
+                if (AppState.db) {
+                    const transaction = AppState.db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    store.put(AppState.saveDirectoryHandle, 'saveDirectory');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    alert('フォルダの選択に失敗しました。');
+                }
+            }
+        }
+        
+        // 保存済みフォルダを読み込み
+        async function loadSavedDirectory() {
+            if (!AppState.db) return;
+
+            try {
+                const transaction = AppState.db.transaction(['settings'], 'readonly');
+                const store = transaction.objectStore('settings');
+                const request = store.get('saveDirectory');
+
+                request.onsuccess = async () => {
+                    const handle = request.result;
+                    if (!handle) return;
+
+                    try {
+                        // 権限確認（verify実行で有効性チェック）
+                        await handle.queryPermission({ mode: 'readwrite' });
+
+                        // ハンドルが有効な場合、再選択ボタンを表示
+                        document.getElementById('folderDisplay').innerHTML = `
+                            <i data-lucide="folder-open" style="width: 14px; height: 14px; vertical-align: middle; color: #FF961C;"></i>
+                            <button onclick="restoreSavedDirectory()" style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                                前回の保存先 (${handle.name}) を復元
+                            </button>
+                        `;
+                        lucide.createIcons();
+                    } catch (verifyErr) {
+                        console.log('ハンドル検証エラー（削除または移動された可能性）:', verifyErr);
+                        // 無効なハンドルを削除
+                        const delTransaction = AppState.db.transaction(['settings'], 'readwrite');
+                        const delStore = delTransaction.objectStore('settings');
+                        delStore.delete('saveDirectory');
+                    }
+                };
+            } catch (err) {
+                console.error('保存先フォルダ読み込みエラー:', err);
+            }
+        }
+
+        // 保存済みフォルダを復元（ユーザー操作）
+        async function restoreSavedDirectory() {
+            if (!AppState.db) return;
+
+            try {
+                const transaction = AppState.db.transaction(['settings'], 'readonly');
+                const store = transaction.objectStore('settings');
+                const request = store.get('saveDirectory');
+
+                request.onsuccess = async () => {
+                    const handle = request.result;
+                    if (!handle) return;
+
+                    try {
+                        // ユーザー操作による権限要求
+                        const permission = await handle.requestPermission({ mode: 'readwrite' });
+                        if (permission === 'granted') {
+                            AppState.saveDirectoryHandle = handle;
+                            await displayFolderPath(handle);
+                            showToast('保存先フォルダを復元しました');
+                        }
+                    } catch (err) {
+                        console.error('権限取得エラー:', err);
+                        alert('保存先フォルダへのアクセス権限が取得できませんでした。\n再度「保存先選択」から設定してください。');
+                    }
+                };
+            } catch (err) {
+                console.error('フォルダ復元エラー:', err);
+            }
+        }
+
+        // クリップボードから貼り付け
+        async function pasteFromClipboard() {
+            try {
+                const items = await navigator.clipboard.read();
+                for (const item of items) {
+                    if (item.types.includes('image/png')) {
+                        const blob = await item.getType('image/png');
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            loadImageToCanvas(e.target.result);
+                            showToast('画像を読み込みました');
+                        };
+                        reader.readAsDataURL(blob);
+                        return;
+                    }
+                }
+                alert('クリップボードに画像がありません。\n\nWin+Shift+S でスクリーンショットを撮影してください。');
+            } catch (err) {
+                alert('クリップボードへのアクセスに失敗しました。');
+                console.error(err);
+            }
+        }
+
+        function loadImageFile() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    loadImageToCanvas(e.target.result);
+                    showToast('画像を読み込みました');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function loadImageToCanvas(dataUrl) {
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                AppState.backgroundImage = img;
+                AppState.shapes = [];
+                AppState.zoom = 1.0;
+                updateZoom();
+                redrawCanvas();
+                updateCanvasSize();
+                updateCanvasSizeOverlay();
+                document.getElementById('trimBtn').disabled = false;
+                document.getElementById('resizeInputBtn').disabled = false;
+                document.getElementById('presetContainer').classList.remove('preset-hidden');
+            };
+            img.src = dataUrl;
+        }
+
+        function updateCanvasSize() {
+            document.getElementById('canvasSize').textContent = `${canvas.width} × ${canvas.height}px`;
+        }
+
+        function selectTool(tool) {
+            AppState.currentTool = tool;
+            AppState.selectedShape = null;
+            AppState.isPolylineActive = false;
+            AppState.polylinePoints = [];
+            
+            document.querySelectorAll('.sidebar .tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.tool-btn').classList.add('active');
+
+            if (tool === 'select') {
+                canvas.classList.add('select-mode');
+            } else {
+                canvas.classList.remove('select-mode');
+            }
+
+            redrawCanvas();
+        }
+
+        function selectColor(color) {
+            AppState.currentColor = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            if (AppState.selectedShape) {
+                AppState.selectedShape.color = color;
+                redrawCanvas();
+            }
+        }
+
+        function updateSlider(id) {
+            const value = document.getElementById(id).value;
+            // 入力フィールドも同期
+            const inputField = document.getElementById(id + 'Input');
+            if (inputField) {
+                inputField.value = value;
+            }
+
+            // グローバル変数の更新
+            if (id === 'mosaicSize') {
+                AppState.mosaicSize = parseInt(value);
+            } else if (id === 'blurStrength') {
+                AppState.blurStrength = parseInt(value);
+            }
+
+            if (AppState.selectedShape) {
+                if (id === 'lineWidth') {
+                    AppState.selectedShape.width = parseInt(value);
+                } else if (id === 'fontSize' && AppState.selectedShape.type === 'text') {
+                    AppState.selectedShape.fontSize = parseInt(value);
+                } else if (id === 'fillOpacity') {
+                    AppState.selectedShape.opacity = parseInt(value) / 100;
+                } else if (id === 'mosaicSize' && AppState.selectedShape.type === 'mosaic') {
+                    AppState.selectedShape.mosaicSize = parseInt(value);
+                } else if (id === 'blurStrength' && AppState.selectedShape.type === 'blur') {
+                    AppState.selectedShape.blurStrength = parseInt(value);
+                }
+                redrawCanvas();
+            }
+        }
+
+        // 入力フィールドからスライダーを更新
+        function updateSliderFromInput(id) {
+            const inputField = document.getElementById(id + 'Input');
+            const slider = document.getElementById(id);
+
+            if (!inputField || !slider) return;
+
+            let value = parseInt(inputField.value);
+            const min = parseInt(slider.min);
+            const max = parseInt(slider.max);
+
+            // 範囲チェック
+            if (isNaN(value) || value < min) {
+                value = min;
+            } else if (value > max) {
+                value = max;
+            }
+
+            // 入力フィールドを補正
+            inputField.value = value;
+
+            // スライダーを更新
+            slider.value = value;
+
+            // 既存のupdateSlider関数を呼び出し
+            updateSlider(id);
+        }
+
+        // 回転角度スライダーが変更された時
+        function updateRotationSlider() {
+            if (!AppState.selectedShape || AppState.selectedShape.type !== 'image') return;
+
+            const slider = document.getElementById('rotationAngle');
+            const input = document.getElementById('rotationAngleInput');
+            const value = parseInt(slider.value);
+
+            // 入力フィールドも更新
+            input.value = value;
+
+            // 選択図形の回転角度を更新
+            AppState.selectedShape.rotation = value;
+
+            // 再描画
+            redrawCanvas();
+        }
+
+        // 回転角度入力フィールドが変更された時
+        function updateRotationFromInput() {
+            if (!AppState.selectedShape || AppState.selectedShape.type !== 'image') return;
+
+            const input = document.getElementById('rotationAngleInput');
+            const slider = document.getElementById('rotationAngle');
+            let value = parseInt(input.value);
+
+            // 範囲チェック
+            if (isNaN(value) || value < 0) {
+                value = 0;
+            } else if (value > 360) {
+                value = 360;
+            }
+
+            // 入力フィールドとスライダーを補正
+            input.value = value;
+            slider.value = value;
+
+            // 選択図形の回転角度を更新
+            AppState.selectedShape.rotation = value;
+
+            // 再描画
+            redrawCanvas();
+        }
+
+        // 選択図形が変更された時に回転UIを更新
+        function updateRotationUI() {
+            const rotationGroup = document.getElementById('rotationGroup');
+            const slider = document.getElementById('rotationAngle');
+            const input = document.getElementById('rotationAngleInput');
+
+            if (AppState.selectedShape && AppState.selectedShape.type === 'image') {
+                // 画像が選択されている場合、回転UIを表示
+                rotationGroup.style.display = 'block';
+                const rotation = AppState.selectedShape.rotation || 0;
+                slider.value = rotation;
+                input.value = rotation;
+            } else {
+                // それ以外は非表示
+                rotationGroup.style.display = 'none';
+            }
+        }
+
+        // カスタムカラーピッカーを開く
+        function openCustomColorPicker() {
+            const colorInput = document.getElementById('customColorInput');
+            const hexInput = document.getElementById('customColorHex');
+
+            // 現在の色を初期値として設定
+            colorInput.value = AppState.currentColor;
+            hexInput.value = AppState.currentColor;
+
+            // カラーピッカーとHEX入力を同期
+            colorInput.oninput = function() {
+                hexInput.value = this.value.toUpperCase();
+            };
+
+            hexInput.oninput = function() {
+                const hex = this.value.trim();
+                if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                    colorInput.value = hex;
+                }
+            };
+
+            document.getElementById('colorPickerOverlay').classList.add('active');
+        }
+
+        // カスタムカラー確定
+        function confirmCustomColor() {
+            const hexInput = document.getElementById('customColorHex');
+            const hex = hexInput.value.trim().toUpperCase();
+
+            // HEXコード検証
+            if (!/^#[0-9A-F]{6}$/i.test(hex)) {
+                alert('正しいカラーコード（例: #FF0000）を入力してください');
+                return;
+            }
+
+            // 色を適用
+            AppState.currentColor = hex;
+
+            // カラーパレットの選択をリセット
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // ダイアログを閉じる
+            document.getElementById('colorPickerOverlay').classList.remove('active');
+
+            // トースト通知
+            showToast(`カスタム色を選択: ${hex}`);
+        }
+
+        // カスタムカラーキャンセル
+        function cancelCustomColor() {
+            document.getElementById('colorPickerOverlay').classList.remove('active');
+        }
+
+        // キャンバスサイズをオーバーレイ表示
+        function updateCanvasSizeOverlay() {
+            const overlay = document.getElementById('canvasSizeOverlay');
+            if (!overlay) return;
+            overlay.textContent = `${canvas.width} × ${canvas.height} px`;
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (AppState.backgroundImage) {
+                ctx.drawImage(AppState.backgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            AppState.shapes.forEach(shape => {
+                drawShape(shape, shape === AppState.selectedShape);
+            });
+
+            // ポリライン描画中のプレビュー
+            if (AppState.isPolylineActive && AppState.polylinePoints.length > 0) {
+                ctx.strokeStyle = AppState.currentColor;
+                ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+                ctx.beginPath();
+                ctx.moveTo(AppState.polylinePoints[0].x, AppState.polylinePoints[0].y);
+                for (let i = 1; i < AppState.polylinePoints.length; i++) {
+                    ctx.lineTo(AppState.polylinePoints[i].x, AppState.polylinePoints[i].y);
+                }
+                ctx.stroke();
+
+                // ポイント表示
+                AppState.polylinePoints.forEach(pt => {
+                    ctx.fillStyle = AppState.currentColor;
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // ガイドライン描画
+            if (AppState.guidelines.length > 0) {
+                drawGuidelines();
+            }
+
+            updateShapeCount();
+        }
+
+        function drawShape(shape, isSelected = false) {
+            ctx.save();
+
+            // colorが存在する図形のみRGBA設定
+            if (shape.color) {
+                const opacity = shape.opacity !== undefined ? (1 - shape.opacity) : 1;
+                const r = parseInt(shape.color.slice(1, 3), 16);
+                const g = parseInt(shape.color.slice(3, 5), 16);
+                const b = parseInt(shape.color.slice(5, 7), 16);
+                const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+
+                ctx.strokeStyle = rgbaColor;
+                ctx.lineWidth = shape.width;
+                ctx.fillStyle = rgbaColor;
+            }
+
+            if (shape.type === 'rect') {
+                ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+            } else if (shape.type === 'circle') {
+                ctx.beginPath();
+                ctx.ellipse(shape.x + shape.w / 2, shape.y + shape.h / 2, Math.abs(shape.w / 2), Math.abs(shape.h / 2), 0, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (shape.type === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(shape.x, shape.y);
+                ctx.lineTo(shape.x + shape.w, shape.y + shape.h);
+                ctx.stroke();
+            } else if (shape.type === 'arrow') {
+                drawArrow(shape);
+            } else if (shape.type === 'polyline') {
+                ctx.beginPath();
+                ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                for (let i = 1; i < shape.points.length; i++) {
+                    ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                }
+                ctx.stroke();
+            } else if (shape.type === 'freehand') {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                for (let i = 1; i < shape.points.length; i++) {
+                    ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                }
+                ctx.stroke();
+            } else if (shape.type === 'text') {
+                ctx.font = `${shape.fontSize}px Meiryo`;
+                ctx.fillText(shape.text, shape.x, shape.y);
+            } else if (shape.type === 'highlight') {
+                ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
+            } else if (shape.type === 'mosaic' || shape.type === 'blur') {
+                // キャッシュされた処理済みImageDataを使用
+                if (shape.processedImageData) {
+                    // マイナス方向のドラッグに対応するため、正しい座標を計算
+                    const drawX = Math.min(shape.x, shape.x + shape.w);
+                    const drawY = Math.min(shape.y, shape.y + shape.h);
+                    ctx.putImageData(shape.processedImageData, drawX, drawY);
+                }
+            } else if (shape.type === 'image') {
+                // 画像スタンプ描画（キャッシュ使用）
+                let img = AppState.imageCache.get(shape.imageData);
+                if (!img) {
+                    img = new Image();
+                    img.src = shape.imageData;
+                    AppState.imageCache.set(shape.imageData, img);
+                }
+                if (img.complete) {
+                    // 回転がある場合はtransformを使用
+                    if (shape.rotation && shape.rotation !== 0) {
+                        ctx.save();
+                        const centerX = shape.x + shape.w / 2;
+                        const centerY = shape.y + shape.h / 2;
+                        ctx.translate(centerX, centerY);
+                        ctx.rotate((shape.rotation * Math.PI) / 180);
+                        ctx.drawImage(img, -shape.w / 2, -shape.h / 2, shape.w, shape.h);
+                        ctx.restore();
+                    } else {
+                        ctx.drawImage(img, shape.x, shape.y, shape.w, shape.h);
+                    }
+                }
+            }
+
+            if (isSelected) {
+                ctx.strokeStyle = '#005BAB';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+
+                if (shape.type === 'text') {
+                    const metrics = ctx.measureText(shape.text);
+                    ctx.strokeRect(shape.x - 5, shape.y - shape.fontSize, metrics.width + 10, shape.fontSize + 10);
+                } else if (shape.type === 'polyline' || shape.type === 'freehand') {
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    shape.points.forEach(pt => {
+                        minX = Math.min(minX, pt.x);
+                        minY = Math.min(minY, pt.y);
+                        maxX = Math.max(maxX, pt.x);
+                        maxY = Math.max(maxY, pt.y);
+                    });
+                    ctx.strokeRect(minX - 5, minY - 5, maxX - minX + 10, maxY - minY + 10);
+                } else {
+                    ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+
+                    // リサイズハンドル描画
+                    drawResizeHandles(shape);
+                }
+                ctx.setLineDash([]);
+            }
+
+            ctx.restore();
+        }
+
+        function drawResizeHandles(shape) {
+            const handles = [
+                { x: shape.x + shape.w, y: shape.y + shape.h, cursor: 'nwse-resize' },
+                { x: shape.x, y: shape.y + shape.h, cursor: 'nesw-resize' },
+                { x: shape.x + shape.w, y: shape.y, cursor: 'nesw-resize' },
+                { x: shape.x, y: shape.y, cursor: 'nwse-resize' }
+            ];
+
+            // リサイズハンドル描画
+            handles.forEach(handle => {
+                ctx.fillStyle = '#005BAB';
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(handle.x, handle.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            // 回転ハンドルを追加（画像の場合のみ）
+            if (shape.type === 'image') {
+                drawRotationHandle(shape);
+            }
+        }
+
+        // 回転ハンドルを描画
+        function drawRotationHandle(shape) {
+            // 回転後のハンドル位置を取得
+            const handlePos = getRotatedHandlePosition(shape);
+            if (!handlePos) return;
+
+            const shapeCenterX = shape.x + shape.w / 2;
+            const shapeCenterY = shape.y + shape.h / 2;
+
+            // 接続線を描画
+            ctx.strokeStyle = '#005BAB';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(shapeCenterX, shapeCenterY);
+            ctx.lineTo(handlePos.x, handlePos.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 回転ハンドル（円形）を描画
+            ctx.fillStyle = '#FF961C';  // オレンジ色で目立たせる
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(handlePos.x, handlePos.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 回転アイコン（矢印）を描画
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(handlePos.x, handlePos.y, 4, -Math.PI * 0.7, Math.PI * 0.7);
+            ctx.stroke();
+            
+            // 矢印の先端
+            ctx.beginPath();
+            ctx.moveTo(handlePos.x + 3, handlePos.y - 2);
+            ctx.lineTo(handlePos.x + 5, handlePos.y - 1);
+            ctx.lineTo(handlePos.x + 3, handlePos.y + 1);
+            ctx.stroke();
+
+            // 角度表示
+            const rotation = shape.rotation || 0;
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Meiryo';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${rotation.toFixed(0)}°`, handlePos.x, handlePos.y - 15);
+        }
+
+        function drawArrow(shape) {
+            const fromX = shape.x;
+            const fromY = shape.y;
+            const toX = shape.x + shape.w;
+            const toY = shape.y + shape.h;
+
+            // 線の太さから矢印の先端サイズを計算（線の太さの3倍）
+            const lineWidth = shape.width || 2;
+            const headlen = lineWidth * 3;
+            const headAngleRad = (30 * Math.PI) / 180;  // 固定30度
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            // 三角形の高さ分だけ線を短くする
+            const lineEndX = toX - (headlen * Math.cos(headAngleRad)) * Math.cos(angle);
+            const lineEndY = toY - (headlen * Math.cos(headAngleRad)) * Math.sin(angle);
+
+            // 線分を描画（ctx.strokeStyleとctx.lineWidthはdrawShape内で既に設定済み）
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(lineEndX, lineEndY);
+            ctx.stroke();
+
+            // 三角形を描画（線の端点に接続）
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - headAngleRad), toY - headlen * Math.sin(angle - headAngleRad));
+            ctx.lineTo(toX - headlen * Math.cos(angle + headAngleRad), toY - headlen * Math.sin(angle + headAngleRad));
+            ctx.closePath();
+            // ctx.fillStyleはdrawShape内で既に設定済み
+            ctx.fill();
+        }
+
+        /**
+         * モザイク処理: ブロック平均化アルゴリズム
+         * ImageDataを受け取り、処理済みImageDataを返す
+         */
+        function processMosaicData(imageData, size) {
+            const data = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
+
+            for (let my = 0; my < h; my += size) {
+                for (let mx = 0; mx < w; mx += size) {
+                    let r = 0, g = 0, b = 0, a = 0, count = 0;
+
+                    // ブロック内の平均色を計算
+                    for (let by = 0; by < size && my + by < h; by++) {
+                        for (let bx = 0; bx < size && mx + bx < w; bx++) {
+                            const idx = ((my + by) * w + (mx + bx)) * 4;
+                            r += data[idx];
+                            g += data[idx + 1];
+                            b += data[idx + 2];
+                            a += data[idx + 3];
+                            count++;
+                        }
+                    }
+
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+                    a = Math.floor(a / count);
+
+                    // ブロック全体を平均色で塗りつぶし
+                    for (let by = 0; by < size && my + by < h; by++) {
+                        for (let bx = 0; bx < size && mx + bx < w; bx++) {
+                            const idx = ((my + by) * w + (mx + bx)) * 4;
+                            data[idx] = r;
+                            data[idx + 1] = g;
+                            data[idx + 2] = b;
+                            data[idx + 3] = a;
+                        }
+                    }
+                }
+            }
+
+            return imageData;
+        }
+
+        /**
+         * ぼかし処理: 2パスBox Blurアルゴリズム
+         * ImageDataを受け取り、処理済みImageDataを返す
+         */
+        function processBlurData(imageData, strength) {
+            const data = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
+            const radius = Math.floor(strength / 2);
+
+            // パス1: 水平方向ぼかし
+            const tempData = new Uint8ClampedArray(data);
+            for (let py = 0; py < h; py++) {
+                for (let px = 0; px < w; px++) {
+                    let r = 0, g = 0, b = 0, a = 0, count = 0;
+
+                    for (let kx = -radius; kx <= radius; kx++) {
+                        const nx = px + kx;
+                        if (nx >= 0 && nx < w) {
+                            const idx = (py * w + nx) * 4;
+                            r += tempData[idx];
+                            g += tempData[idx + 1];
+                            b += tempData[idx + 2];
+                            a += tempData[idx + 3];
+                            count++;
+                        }
+                    }
+
+                    const idx = (py * w + px) * 4;
+                    data[idx] = Math.floor(r / count);
+                    data[idx + 1] = Math.floor(g / count);
+                    data[idx + 2] = Math.floor(b / count);
+                    data[idx + 3] = Math.floor(a / count);
+                }
+            }
+
+            // パス2: 垂直方向ぼかし
+            const tempData2 = new Uint8ClampedArray(data);
+            for (let py = 0; py < h; py++) {
+                for (let px = 0; px < w; px++) {
+                    let r = 0, g = 0, b = 0, a = 0, count = 0;
+
+                    for (let ky = -radius; ky <= radius; ky++) {
+                        const ny = py + ky;
+                        if (ny >= 0 && ny < h) {
+                            const idx = (ny * w + px) * 4;
+                            r += tempData2[idx];
+                            g += tempData2[idx + 1];
+                            b += tempData2[idx + 2];
+                            a += tempData2[idx + 3];
+                            count++;
+                        }
+                    }
+
+                    const idx = (py * w + px) * 4;
+                    data[idx] = Math.floor(r / count);
+                    data[idx + 1] = Math.floor(g / count);
+                    data[idx + 2] = Math.floor(b / count);
+                    data[idx + 3] = Math.floor(a / count);
+                }
+            }
+
+            return imageData;
+        }
+
+        function getResizeHandle(shape, x, y) {
+            const handles = [
+                { x: shape.x + shape.w, y: shape.y + shape.h, type: 'se' },
+                { x: shape.x, y: shape.y + shape.h, type: 'sw' },
+                { x: shape.x + shape.w, y: shape.y, type: 'ne' },
+                { x: shape.x, y: shape.y, type: 'nw' }
+            ];
+
+            for (let handle of handles) {
+                const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
+                if (dist < 8) {
+                    return handle.type;
+                }
+            }
+            return null;
+        }
+
+        // 回転後のハンドル位置を計算（Geminiアドバイスに基づく実装）
+        function getRotatedHandlePosition(shape) {
+            if (shape.type !== 'image') return null;
+
+            // 1. 図形の中心座標
+            const shapeCenterX = shape.x + shape.w / 2;
+            const shapeCenterY = shape.y + shape.h / 2;
+
+            // 2. 回転前のハンドルのオフセット（中心からの相対位置）
+            const handleOffsetY = -shape.h / 2 - 30; // 図形の上端から30px上
+
+            // 3. 図形の回転角度（ラジアンに変換）
+            const angleRad = (shape.rotation || 0) * Math.PI / 180;
+
+            // 4. オフセットを回転行列で変換
+            const rotatedX = -handleOffsetY * Math.sin(angleRad);
+            const rotatedY = handleOffsetY * Math.cos(angleRad);
+
+            // 5. 図形の中心に回転後のオフセットを加算
+            return {
+                x: shapeCenterX + rotatedX,
+                y: shapeCenterY + rotatedY
+            };
+        }
+
+        // 回転ハンドルのヒットテスト（修正版）
+        function getRotationHandle(shape, x, y) {
+            if (shape.type !== 'image') return false;
+
+            const handlePos = getRotatedHandlePosition(shape);
+            if (!handlePos) return false;
+
+            const dist = Math.sqrt((x - handlePos.x) ** 2 + (y - handlePos.y) ** 2);
+            
+            // デバッグログ（開発時のみ）
+            console.log('ハンドル判定:', {
+                mouseX: x.toFixed(1),
+                mouseY: y.toFixed(1),
+                handleX: handlePos.x.toFixed(1),
+                handleY: handlePos.y.toFixed(1),
+                distance: dist.toFixed(1),
+                isHit: dist < 15
+            });
+            
+            return dist < 15;  // 15pxの範囲内でヒット（判定範囲を拡大）
+        }
+
+        // マウス位置から回転角度を計算
+        function calculateRotationAngle(shape, mouseX, mouseY) {
+            const centerX = shape.x + shape.w / 2;
+            const centerY = shape.y + shape.h / 2;
+
+            // マウス位置と図形中心との角度を計算
+            const angle = Math.atan2(mouseY - centerY, mouseX - centerX);
+            
+            // ラジアンから度に変換（0-360度）
+            let degrees = (angle * 180 / Math.PI) + 90;  // +90で上を0度に
+            if (degrees < 0) degrees += 360;
+            
+            return Math.round(degrees);
+        }
+
+        function hitTest(x, y) {
+            for (let i = AppState.shapes.length - 1; i >= 0; i--) {
+                const shape = AppState.shapes[i];
+
+                // ロックされた図形はスキップして下の図形を選択可能に
+                if (shape.locked) continue;
+
+                if (shape.type === 'text') {
+                    ctx.font = `${shape.fontSize}px Meiryo`;
+                    const metrics = ctx.measureText(shape.text);
+                    if (x >= shape.x && x <= shape.x + metrics.width &&
+                        y >= shape.y - shape.fontSize && y <= shape.y) {
+                        return shape;
+                    }
+                } else if (shape.type === 'polyline') {
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    shape.points.forEach(pt => {
+                        minX = Math.min(minX, pt.x);
+                        minY = Math.min(minY, pt.y);
+                        maxX = Math.max(maxX, pt.x);
+                        maxY = Math.max(maxY, pt.y);
+                    });
+                    if (x >= minX - 5 && x <= maxX + 5 && y >= minY - 5 && y <= maxY + 5) {
+                        return shape;
+                    }
+                } else if (shape.type === 'freehand') {
+                    // フリーハンド図形の当たり判定：線分との最短距離を計算
+                    const threshold = Math.max(shape.width || 1, 5); // 線幅または最低5px
+                    for (let j = 0; j < shape.points.length - 1; j++) {
+                        const p1 = shape.points[j];
+                        const p2 = shape.points[j + 1];
+                        const dist = pointToLineDistance(x, y, p1.x, p1.y, p2.x, p2.y);
+                        if (dist <= threshold) {
+                            return shape;
+                        }
+                    }
+                } else {
+                    const minX = Math.min(shape.x, shape.x + shape.w);
+                    const maxX = Math.max(shape.x, shape.x + shape.w);
+                    const minY = Math.min(shape.y, shape.y + shape.h);
+                    const maxY = Math.max(shape.y, shape.y + shape.h);
+
+                    if (x >= minX - 5 && x <= maxX + 5 && y >= minY - 5 && y <= maxY + 5) {
+                        return shape;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 点と線分の最短距離を計算するヘルパー関数
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+
+            if (lenSq !== 0) param = dot / lenSq;
+
+            let xx, yy;
+
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            // ダブルクリック検出
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - AppState.lastClickTime;
+
+            if (AppState.currentTool === 'select' && timeDiff < 300) {
+                const hitShape = hitTest(mouseX, mouseY);
+                if (hitShape && hitShape.type === 'text') {
+                    editSelectedShape();
+                    AppState.lastClickTime = 0;
+                    return;
+                }
+            }
+            AppState.lastClickTime = currentTime;
+
+            // フリーハンド処理
+            // フリーハンド処理
+            if (AppState.currentTool === 'freehand') {
+                AppState.freehandPoints = [{ x: mouseX, y: mouseY }];
+                AppState.isDrawing = true;
+                return;
+            }
+
+            // ポリライン処理
+            if (AppState.currentTool === 'polyline') {
+                let pointX = mouseX;
+                let pointY = mouseY;
+                
+                // Shiftキー押下時：最後の点から水平・垂直・45度に制約
+                if (AppState.isShiftPressed && AppState.polylinePoints.length > 0) {
+                    const lastPoint = AppState.polylinePoints[AppState.polylinePoints.length - 1];
+                    const dx = pointX - lastPoint.x;
+                    const dy = pointY - lastPoint.y;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        pointY = lastPoint.y;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        pointX = lastPoint.x;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        pointX = lastPoint.x + dist * Math.sign(dx);
+                        pointY = lastPoint.y + dist * Math.sign(dy);
+                    }
+                }
+                
+                AppState.polylinePoints.push({ x: pointX, y: pointY });
+                AppState.isPolylineActive = true;
+                redrawCanvas();
+                return;
+            }
+
+            if (AppState.currentTool === 'select') {
+                // 既に選択されている図形の回転ハンドルをチェック（優先）
+                if (AppState.selectedShape && AppState.selectedShape.type === 'image') {
+                    if (getRotationHandle(AppState.selectedShape, mouseX, mouseY)) {
+                        AppState.isRotating = true;
+                        console.log('回転開始:', AppState.selectedShape.rotation);
+                        redrawCanvas();
+                        return;
+                    }
+                }
+
+                // 新しい図形を選択
+                const hitShape = hitTest(mouseX, mouseY);
+                if (hitShape) {
+                    AppState.selectedShape = hitShape;
+
+                    // ロックされている場合は編集不可
+                    if (hitShape.locked) {
+                        showToast('この図形はロックされています', 'warning');
+                        redrawCanvas();
+                        return;
+                    }
+
+                    // リサイズハンドルチェック（全図形対応）
+                    AppState.resizeHandle = getResizeHandle(hitShape, mouseX, mouseY);
+                    if (AppState.resizeHandle) {
+                        AppState.isResizing = true;
+                        return;
+                    }
+
+                    AppState.isDragging = true;
+
+                    // フリーハンド・ポリラインの場合はバウンディングボックスから計算
+                    if (hitShape.type === 'polyline' || hitShape.type === 'freehand') {
+                        let minX = Infinity, minY = Infinity;
+                        hitShape.points.forEach(pt => {
+                            minX = Math.min(minX, pt.x);
+                            minY = Math.min(minY, pt.y);
+                        });
+                        hitShape.x = minX;
+                        hitShape.y = minY;
+                    }
+
+                    AppState.dragOffsetX = mouseX - hitShape.x;
+                    AppState.dragOffsetY = mouseY - hitShape.y;
+                    AppState.dragStartX = hitShape.x;
+                    AppState.dragStartY = hitShape.y;
+                    
+                    if (hitShape.width) {
+                        document.getElementById('lineWidth').value = hitShape.width;
+                        updateSlider('lineWidth');
+                    }
+                    if (hitShape.fontSize) {
+                        document.getElementById('fontSize').value = hitShape.fontSize;
+                        updateSlider('fontSize');
+                    }
+
+                    updateRotationUI();
+                    redrawCanvas();
+                } else {
+                    AppState.selectedShape = null;
+                    updateRotationUI();
+                    redrawCanvas();
+                }
+                return;
+            }
+
+            AppState.startX = mouseX;
+            AppState.startY = mouseY;
+
+            if (AppState.currentTool === 'text') {
+                AppState.pendingTextPosition = { x: AppState.startX, y: AppState.startY };
+                showTextPopup(e.clientX, e.clientY);
+            } else if (AppState.currentTool) {
+                AppState.isDrawing = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            // フリーハンド描画中
+            if (AppState.isDrawing && AppState.currentTool === 'freehand') {
+                AppState.freehandPoints.push({ x: mouseX, y: mouseY });
+                redrawCanvas();
+                
+                // リアルタイムプレビュー
+                ctx.strokeStyle = AppState.currentColor;
+                ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(AppState.freehandPoints[0].x, AppState.freehandPoints[0].y);
+                for (let i = 1; i < AppState.freehandPoints.length; i++) {
+                    ctx.lineTo(AppState.freehandPoints[i].x, AppState.freehandPoints[i].y);
+                }
+                ctx.stroke();
+                return;
+            }
+
+            // ポリライン描画中のプレビュー
+            if (AppState.isPolylineActive && AppState.polylinePoints.length > 0) {
+                let previewX = mouseX;
+                let previewY = mouseY;
+                
+                // Shiftキー押下時：最後の点から水平・垂直・45度に制約
+                if (AppState.isShiftPressed) {
+                    const lastPoint = AppState.polylinePoints[AppState.polylinePoints.length - 1];
+                    const dx = previewX - lastPoint.x;
+                    const dy = previewY - lastPoint.y;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    
+                    if (absAngle < 22.5 || absAngle > 157.5) {
+                        // 水平
+                        previewY = lastPoint.y;
+                    } else if (absAngle >= 67.5 && absAngle <= 112.5) {
+                        // 垂直
+                        previewX = lastPoint.x;
+                    } else {
+                        // 45度
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        previewX = lastPoint.x + dist * Math.sign(dx);
+                        previewY = lastPoint.y + dist * Math.sign(dy);
+                    }
+                }
+                
+                redrawCanvas();
+                ctx.strokeStyle = AppState.currentColor;
+                ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(AppState.polylinePoints[AppState.polylinePoints.length - 1].x, AppState.polylinePoints[AppState.polylinePoints.length - 1].y);
+                ctx.lineTo(previewX, previewY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                return;
+            }
+
+            // 回転処理
+            if (AppState.isRotating && AppState.selectedShape && AppState.selectedShape.type === 'image') {
+                let rotation = calculateRotationAngle(AppState.selectedShape, mouseX, mouseY);
+                
+                // Shiftキー押下時：15度単位に制約
+                if (AppState.isShiftPressed) {
+                    rotation = Math.round(rotation / 15) * 15;
+                    if (rotation >= 360) rotation = 0;
+                }
+                
+                AppState.selectedShape.rotation = rotation;
+                
+                // UIも更新
+                const slider = document.getElementById('rotationAngle');
+                const input = document.getElementById('rotationAngleInput');
+                slider.value = rotation;
+                input.value = rotation;
+                
+                redrawCanvas();
+                return;
+            }
+
+            // リサイズ処理
+            if (AppState.isResizing && AppState.selectedShape) {
+                // スナップ適用（リサイズ時）
+                let resizeMouseX = mouseX;
+                let resizeMouseY = mouseY;
+                if (AppState.snapEnabled) {
+                    const snapped = applySnap(mouseX, mouseY);
+                    resizeMouseX = snapped.x;
+                    resizeMouseY = snapped.y;
+                }
+
+                if (AppState.selectedShape.type === 'circle') {
+                    // 円のリサイズ: 半径を調整（常に正円を維持）
+                    const dx = resizeMouseX - (AppState.selectedShape.x + AppState.selectedShape.w);
+                    const dy = resizeMouseY - (AppState.selectedShape.y + AppState.selectedShape.h);
+                    const centerX = AppState.selectedShape.x + AppState.selectedShape.w / 2;
+                    const centerY = AppState.selectedShape.y + AppState.selectedShape.h / 2;
+                    const newRadius = Math.sqrt((resizeMouseX - centerX) ** 2 + (resizeMouseY - centerY) ** 2);
+                    AppState.selectedShape.w = newRadius * 2;
+                    AppState.selectedShape.h = newRadius * 2;
+                    AppState.selectedShape.x = centerX - newRadius;
+                    AppState.selectedShape.y = centerY - newRadius;
+                } else if (AppState.selectedShape.type === 'polyline') {
+                    // ポリラインのリサイズ: 全ポイントをスケール
+                    const oldWidth = AppState.selectedShape.w;
+                    const oldHeight = AppState.selectedShape.h;
+                    const dx = resizeMouseX - (AppState.selectedShape.x + AppState.selectedShape.w);
+                    const dy = resizeMouseY - (AppState.selectedShape.y + AppState.selectedShape.h);
+                    
+                    if (AppState.resizeHandle === 'se') {
+                        AppState.selectedShape.w += dx;
+                        AppState.selectedShape.h += dy;
+                    } else if (AppState.resizeHandle === 'sw') {
+                        AppState.selectedShape.w -= (resizeMouseX - AppState.selectedShape.x);
+                        AppState.selectedShape.x = resizeMouseX;
+                        AppState.selectedShape.h += dy;
+                    } else if (AppState.resizeHandle === 'ne') {
+                        AppState.selectedShape.w += dx;
+                        AppState.selectedShape.h -= (resizeMouseY - AppState.selectedShape.y);
+                        AppState.selectedShape.y = resizeMouseY;
+                    } else if (AppState.resizeHandle === 'nw') {
+                        AppState.selectedShape.w -= (resizeMouseX - AppState.selectedShape.x);
+                        AppState.selectedShape.h -= (resizeMouseY - AppState.selectedShape.y);
+                        AppState.selectedShape.x = resizeMouseX;
+                        AppState.selectedShape.y = resizeMouseY;
+                    }
+                    
+                    const scaleX = AppState.selectedShape.w / oldWidth;
+                    const scaleY = AppState.selectedShape.h / oldHeight;
+                    AppState.selectedShape.points = AppState.selectedShape.points.map(p => ({
+                        x: AppState.selectedShape.x + (p.x - AppState.selectedShape.x) * scaleX,
+                        y: AppState.selectedShape.y + (p.y - AppState.selectedShape.y) * scaleY
+                    }));
+                } else if (AppState.selectedShape.type === 'text') {
+                    // テキストのリサイズ: フォントサイズを調整
+                    const dx = resizeMouseX - (AppState.selectedShape.x + AppState.selectedShape.w);
+                    const dy = resizeMouseY - (AppState.selectedShape.y + AppState.selectedShape.h);
+                    const oldSize = AppState.selectedShape.fontSize || 24;
+                    const scaleFactor = Math.sqrt((dx * dx + dy * dy) / (AppState.selectedShape.w * AppState.selectedShape.w + AppState.selectedShape.h * AppState.selectedShape.h));
+                    AppState.selectedShape.fontSize = Math.max(12, Math.round(oldSize * (1 + scaleFactor)));
+                } else {
+                    // 通常の図形（rect, line, arrow等）
+                    const dx = resizeMouseX - (AppState.selectedShape.x + AppState.selectedShape.w);
+                    const dy = resizeMouseY - (AppState.selectedShape.y + AppState.selectedShape.h);
+                    
+                    // Shiftキー押下時：縦横比を維持
+                    if (AppState.isShiftPressed) {
+                        const aspectRatio = Math.abs(AppState.selectedShape.w) / Math.abs(AppState.selectedShape.h);
+                        
+                        if (AppState.resizeHandle === 'se') {
+                            const newW = AppState.selectedShape.w + dx;
+                            const newH = newW / aspectRatio * Math.sign(AppState.selectedShape.h);
+                            AppState.selectedShape.w = newW;
+                            AppState.selectedShape.h = newH;
+                        } else if (AppState.resizeHandle === 'sw') {
+                            const newW = AppState.selectedShape.w - (resizeMouseX - AppState.selectedShape.x);
+                            const newH = newW / aspectRatio * Math.sign(AppState.selectedShape.h);
+                            AppState.selectedShape.x = resizeMouseX;
+                            AppState.selectedShape.w = newW;
+                            AppState.selectedShape.h = newH;
+                        } else if (AppState.resizeHandle === 'ne') {
+                            const newW = AppState.selectedShape.w + dx;
+                            const newH = newW / aspectRatio * Math.sign(AppState.selectedShape.h);
+                            AppState.selectedShape.w = newW;
+                            AppState.selectedShape.h = newH;
+                            AppState.selectedShape.y = AppState.selectedShape.y + AppState.selectedShape.h - newH;
+                        } else if (AppState.resizeHandle === 'nw') {
+                            const newW = AppState.selectedShape.w - (resizeMouseX - AppState.selectedShape.x);
+                            const newH = newW / aspectRatio * Math.sign(AppState.selectedShape.h);
+                            const oldH = AppState.selectedShape.h;
+                            AppState.selectedShape.x = resizeMouseX;
+                            AppState.selectedShape.w = newW;
+                            AppState.selectedShape.h = newH;
+                            AppState.selectedShape.y = AppState.selectedShape.y + oldH - newH;
+                        }
+                    } else {
+                        // 通常のリサイズ
+                        if (AppState.resizeHandle === 'se') {
+                            AppState.selectedShape.w += dx;
+                            AppState.selectedShape.h += dy;
+                        } else if (AppState.resizeHandle === 'sw') {
+                            AppState.selectedShape.w -= (resizeMouseX - AppState.selectedShape.x);
+                            AppState.selectedShape.x = resizeMouseX;
+                            AppState.selectedShape.h += dy;
+                        } else if (AppState.resizeHandle === 'ne') {
+                            AppState.selectedShape.w += dx;
+                            AppState.selectedShape.h -= (resizeMouseY - AppState.selectedShape.y);
+                            AppState.selectedShape.y = resizeMouseY;
+                        } else if (AppState.resizeHandle === 'nw') {
+                            AppState.selectedShape.w -= (resizeMouseX - AppState.selectedShape.x);
+                            AppState.selectedShape.h -= (resizeMouseY - AppState.selectedShape.y);
+                            AppState.selectedShape.x = resizeMouseX;
+                            AppState.selectedShape.y = resizeMouseY;
+                        }
+                    }
+                }
+                
+                redrawCanvas();
+                return;
+            }
+
+            if (AppState.currentTool === 'select' && AppState.isDragging && AppState.selectedShape) {
+                let newX = mouseX - AppState.dragOffsetX;
+                let newY = mouseY - AppState.dragOffsetY;
+
+                // スナップ適用（ドラッグ時）
+                if (AppState.snapEnabled) {
+                    const snapped = applySnap(newX, newY);
+                    newX = snapped.x;
+                    newY = snapped.y;
+                }
+
+                // Shiftキー押下時：水平または垂直方向に制約
+                if (AppState.isShiftPressed) {
+                    const deltaX = Math.abs(newX - AppState.dragStartX);
+                    const deltaY = Math.abs(newY - AppState.dragStartY);
+
+                    if (deltaX > deltaY) {
+                        // 水平移動
+                        newY = AppState.dragStartY;
+                    } else {
+                        // 垂直移動
+                        newX = AppState.dragStartX;
+                    }
+                }
+
+                // フリーハンド・ポリラインはpoints配列を移動
+                if (AppState.selectedShape.type === 'polyline' || AppState.selectedShape.type === 'freehand') {
+                    const deltaX = newX - AppState.dragStartX;
+                    const deltaY = newY - AppState.dragStartY;
+                    AppState.selectedShape.points = AppState.selectedShape.points.map(p => ({
+                        x: p.x + deltaX,
+                        y: p.y + deltaY
+                    }));
+                    // バウンディングボックスも更新
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    AppState.selectedShape.points.forEach(pt => {
+                        minX = Math.min(minX, pt.x);
+                        minY = Math.min(minY, pt.y);
+                        maxX = Math.max(maxX, pt.x);
+                        maxY = Math.max(maxY, pt.y);
+                    });
+                    AppState.selectedShape.x = minX;
+                    AppState.selectedShape.y = minY;
+                    AppState.selectedShape.w = maxX - minX;
+                    AppState.selectedShape.h = maxY - minY;
+                    AppState.dragStartX = newX;
+                    AppState.dragStartY = newY;
+                } else {
+                    AppState.selectedShape.x = newX;
+                    AppState.selectedShape.y = newY;
+                }
+
+                redrawCanvas();
+                return;
+            }
+
+            if (!AppState.isDrawing || !AppState.currentTool) return;
+
+            redrawCanvas();
+            ctx.strokeStyle = AppState.currentColor;
+            ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+            const opacity = parseInt(document.getElementById('fillOpacity').value) / 100;
+            const r = parseInt(AppState.currentColor.slice(1, 3), 16);
+            const g = parseInt(AppState.currentColor.slice(3, 5), 16);
+            const b = parseInt(AppState.currentColor.slice(5, 7), 16);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${1 - opacity})`;
+
+            let currentX = (e.clientX - canvas.getBoundingClientRect().left) * (canvas.width / canvas.getBoundingClientRect().width);
+            let currentY = (e.clientY - canvas.getBoundingClientRect().top) * (canvas.height / canvas.getBoundingClientRect().height);
+
+            // スナップ適用（新規図形描画時）
+            if (AppState.snapEnabled) {
+                const snapped = applySnap(currentX, currentY);
+                currentX = snapped.x;
+                currentY = snapped.y;
+            }
+
+            // Shiftキー制約適用
+            if (AppState.isShiftPressed) {
+                const dx = currentX - AppState.startX;
+                const dy = currentY - AppState.startY;
+                if (AppState.currentTool === 'line' || AppState.currentTool === 'arrow') {
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const absAngle = Math.abs(angle);
+                    if (absAngle < 22.5 || absAngle > 157.5) currentY = AppState.startY;
+                    else if (absAngle >= 67.5 && absAngle <= 112.5) currentX = AppState.startX;
+                    else {
+                        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                        currentX = AppState.startX + dist * Math.sign(dx);
+                        currentY = AppState.startY + dist * Math.sign(dy);
+                    }
+                } else if (['rect', 'highlight', 'mosaic', 'blur', 'circle'].includes(AppState.currentTool)) {
+                    const size = Math.max(Math.abs(dx), Math.abs(dy));
+                    currentX = AppState.startX + size * Math.sign(dx);
+                    currentY = AppState.startY + size * Math.sign(dy);
+                }
+            }
+
+            // プレビューは破線で描画
+            ctx.setLineDash([5, 5]);
+
+            // モザイク・ぼかしは矩形枠のみプレビュー表示
+            if (AppState.currentTool === 'mosaic' || AppState.currentTool === 'blur') {
+                ctx.strokeRect(AppState.startX, AppState.startY, currentX - AppState.startX, currentY - AppState.startY);
+            } else {
+                const tempShape = {
+                    type: AppState.currentTool,
+                    x: AppState.startX,
+                    y: AppState.startY,
+                    w: currentX - AppState.startX,
+                    h: currentY - AppState.startY,
+                    color: AppState.currentColor,
+                    width: ctx.lineWidth,
+                    opacity: opacity
+                };
+                drawShape(tempShape);
+            }
+
+            ctx.setLineDash([]);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            // 最初に座標関連の変数を定義
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let endX = (e.clientX - rect.left) * scaleX;
+            let endY = (e.clientY - rect.top) * scaleY;
+
+            // 選択モードの操作完了
+            if (AppState.isRotating) {
+                AppState.isRotating = false;
+                redrawCanvas();
+                return;
+            }
+            if (AppState.isResizing) {
+                AppState.isResizing = false;
+                AppState.resizeHandle = null;
+                redrawCanvas();
+                return;
+            }
+            if (AppState.isDragging) {
+                AppState.isDragging = false;
+                return;
+            }
+
+            // 描画中でなければここで終了
+            if (!AppState.isDrawing) return;
+            
+            // isDrawingフラグをリセット
+            AppState.isDrawing = false;
+
+            // ツールごとの描画完了処理
+            if (AppState.currentTool === 'freehand') {
+                if (AppState.freehandPoints.length > 1) {
+                    AppState.shapes.push({
+                        type: 'freehand',
+                        points: [...AppState.freehandPoints],
+                        color: AppState.currentColor,
+                        width: parseInt(document.getElementById('lineWidth').value),
+                        opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                    });
+                }
+                AppState.freehandPoints = []; // ポイントをクリア
+            } else if (AppState.currentTool && AppState.currentTool !== 'select' && AppState.currentTool !== 'text') {
+                // Shiftキー制約を適用
+                if (AppState.isShiftPressed) {
+                    const dx = endX - AppState.startX;
+                    const dy = endY - AppState.startY;
+                    if (AppState.currentTool === 'line' || AppState.currentTool === 'arrow') {
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        const absAngle = Math.abs(angle);
+                        if (absAngle < 22.5 || absAngle > 157.5) endY = AppState.startY;
+                        else if (absAngle >= 67.5 && absAngle <= 112.5) endX = AppState.startX;
+                        else {
+                            const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                            endX = AppState.startX + dist * Math.sign(dx);
+                            endY = AppState.startY + dist * Math.sign(dy);
+                        }
+                    } else if (['rect', 'highlight', 'mosaic', 'blur', 'circle'].includes(AppState.currentTool)) {
+                        const size = Math.max(Math.abs(dx), Math.abs(dy));
+                        endX = AppState.startX + size * Math.sign(dx);
+                        endY = AppState.startY + size * Math.sign(dy);
+                    }
+                }
+
+                const shape = {
+                    type: AppState.currentTool,
+                    x: AppState.startX,
+                    y: AppState.startY,
+                    w: endX - AppState.startX,
+                    h: endY - AppState.startY,
+                    color: AppState.currentColor,
+                    width: parseInt(document.getElementById('lineWidth').value),
+                    opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                };
+
+
+                // ゼロサイズの図形は追加しない
+                if (shape.w !== 0 || shape.h !== 0 || shape.type === 'line') {
+                    if (AppState.currentTool === 'mosaic' || AppState.currentTool === 'blur') {
+                        // プレビュー枠を消すために一度再描画
+                        redrawCanvas();
+
+                        const x = Math.min(shape.x, shape.x + shape.w);
+                        const y = Math.min(shape.y, shape.y + shape.h);
+                        const w = Math.abs(shape.w);
+                        const h = Math.abs(shape.h);
+                        if (w > 0 && h > 0) {
+                            const imgData = ctx.getImageData(x, y, w, h);
+                            if (AppState.currentTool === 'mosaic') {
+                                shape.mosaicSize = AppState.mosaicSize;
+                                shape.processedImageData = processMosaicData(imgData, AppState.mosaicSize);
+                            } else {
+                                shape.blurStrength = AppState.blurStrength;
+                                shape.processedImageData = processBlurData(imgData, AppState.blurStrength);
+                            }
+                        }
+                    }
+                    AppState.shapes.push(shape);
+                }
+            }
+            
+            // 最後にキャンバスを再描画
+            redrawCanvas();
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            
+            // ポリライン終了
+            if (AppState.isPolylineActive && AppState.polylinePoints.length > 1) {
+                AppState.shapes.push({
+                    type: 'polyline',
+                    points: [...AppState.polylinePoints],
+                    color: AppState.currentColor,
+                    width: parseInt(document.getElementById('lineWidth').value),
+                    opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                });
+                AppState.polylinePoints = [];
+                AppState.isPolylineActive = false;
+                redrawCanvas();
+                showToast('連続線を追加しました');
+                return;
+            }
+            
+            if (AppState.currentTool !== 'select' || !AppState.selectedShape) return;
+
+            const menu = document.getElementById('contextMenu');
+            const rotateMenuItem = document.getElementById('rotateMenuItem');
+
+            // 画像の場合のみ回転メニューを表示
+            if (AppState.selectedShape.type === 'image') {
+                rotateMenuItem.style.display = 'flex';
+            } else {
+                rotateMenuItem.style.display = 'none';
+            }
+
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.classList.add('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                document.getElementById('contextMenu').classList.remove('active');
+            }
+        });
+
+        function editSelectedShape() {
+            if (!AppState.selectedShape) return;
+            
+            if (AppState.selectedShape.type === 'text') {
+                AppState.pendingTextPosition = { x: AppState.selectedShape.x, y: AppState.selectedShape.y };
+                document.getElementById('textInput').value = AppState.selectedShape.text;
+                showTextPopup(window.innerWidth / 2, window.innerHeight / 2);
+            }
+            
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function duplicateSelectedShape() {
+            if (!AppState.selectedShape) return;
+
+            const newShape = JSON.parse(JSON.stringify(AppState.selectedShape));
+            newShape.x += 20;
+            newShape.y += 20;
+            AppState.shapes.push(newShape);
+            AppState.selectedShape = newShape;
+            redrawCanvas();
+
+            document.getElementById('contextMenu').classList.remove('active');
+            showToast('図形を複製しました');
+        }
+
+        function rotateSelectedShape() {
+            if (!AppState.selectedShape || AppState.selectedShape.type !== 'image') return;
+
+            // 回転角度を90度ずつ増加（360度で0に戻る）
+            AppState.selectedShape.rotation = (AppState.selectedShape.rotation || 0) + 90;
+            if (AppState.selectedShape.rotation >= 360) {
+                AppState.selectedShape.rotation = 0;
+            }
+
+            redrawCanvas();
+
+            document.getElementById('contextMenu').classList.remove('active');
+            showToast(`画像を${AppState.selectedShape.rotation}°回転しました`);
+        }
+
+        function deleteSelectedShape() {
+            if (!AppState.selectedShape) return;
+            
+            const index = AppState.shapes.indexOf(AppState.selectedShape);
+            if (index > -1) {
+                AppState.shapes.splice(index, 1);
+                AppState.selectedShape = null;
+                redrawCanvas();
+                showToast('図形を削除しました');
+            }
+            
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        function showTextPopup(x, y) {
+            const popup = document.getElementById('textPopup');
+            const input = document.getElementById('textInput');
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            popup.classList.add('active');
+            input.focus();
+            input.select();
+        }
+
+        function confirmText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('テキストを入力してください');
+                return;
+            }
+
+            if (AppState.pendingTextPosition) {
+                const fontSize = parseInt(document.getElementById('fontSize').value);
+                
+                if (AppState.selectedShape && AppState.selectedShape.type === 'text') {
+                    AppState.selectedShape.text = text;
+                    AppState.selectedShape.fontSize = fontSize;
+                    AppState.selectedShape.color = AppState.currentColor;
+                } else {
+                    AppState.shapes.push({
+                        type: 'text',
+                        x: AppState.pendingTextPosition.x,
+                        y: AppState.pendingTextPosition.y,
+                        text: text,
+                        fontSize: fontSize,
+                        color: AppState.currentColor,
+                        opacity: parseInt(document.getElementById('fillOpacity').value) / 100
+                    });
+                }
+                redrawCanvas();
+            }
+
+            document.getElementById('textPopup').classList.remove('active');
+            document.getElementById('textInput').value = '';
+            AppState.pendingTextPosition = null;
+        }
+
+        function cancelText() {
+            document.getElementById('textPopup').classList.remove('active');
+            document.getElementById('textInput').value = '';
+            AppState.pendingTextPosition = null;
+        }
+
+        document.getElementById('textInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmText();
+            }
+        });
+
+        function updateShapeCount() {
+            document.getElementById('shapeCount').textContent = AppState.shapes.length;
+        }
+
+        function updateZoom() {
+            canvas.style.transform = `scale(${AppState.zoom})`;
+            canvas.style.transformOrigin = 'center center';
+            document.getElementById('zoomLevel').textContent = Math.round(AppState.zoom * 100);
+        }
+
+        function zoomIn() {
+            AppState.zoom = Math.min(AppState.zoom + 0.1, 3.0);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            AppState.zoom = Math.max(AppState.zoom - 0.1, 0.5);
+            updateZoom();
+        }
+
+        function zoomReset() {
+            AppState.zoom = 1.0;
+            updateZoom();
+        }
+
+        function undoLast() {
+            if (AppState.shapes.length === 0) {
+                showToast('削除する図形がありません', 'warning');
+                return;
+            }
+            const removed = AppState.shapes.pop();
+            AppState.redoStack.push(removed); // Redo用に保存
+            AppState.selectedShape = null;
+            redrawCanvas();
+            showToast('取り消しました');
+        }
+
+        function redoLast() {
+            if (AppState.redoStack.length === 0) {
+                showToast('やり直す操作がありません', 'warning');
+                return;
+            }
+            const restored = AppState.redoStack.pop();
+            AppState.shapes.push(restored);
+            AppState.selectedShape = null;
+            redrawCanvas();
+            showToast('やり直しました');
+        }
+
+        function clearAll() {
+            if (!confirm('すべての図形を削除しますか？')) return;
+            AppState.shapes = [];
+            AppState.selectedShape = null;
+            redrawCanvas();
+            showToast('すべて削除しました');
+        }
+
+        // レイヤー管理機能
+        function bringToFront() {
+            if (!AppState.selectedShape) {
+                showToast('図形が選択されていません', 'warning');
+                return;
+            }
+            const index = AppState.shapes.indexOf(AppState.selectedShape);
+            if (index === -1 || index === AppState.shapes.length - 1) return;
+            AppState.shapes.splice(index, 1);
+            AppState.shapes.push(AppState.selectedShape);
+            redrawCanvas();
+            showToast('最前面に移動しました');
+        }
+
+        function sendToBack() {
+            if (!AppState.selectedShape) {
+                showToast('図形が選択されていません', 'warning');
+                return;
+            }
+            const index = AppState.shapes.indexOf(AppState.selectedShape);
+            if (index === -1 || index === 0) return;
+            AppState.shapes.splice(index, 1);
+            AppState.shapes.unshift(AppState.selectedShape);
+            redrawCanvas();
+            showToast('最背面に移動しました');
+        }
+
+        function toggleLock() {
+            if (!AppState.selectedShape) {
+                showToast('図形が選択されていません', 'warning');
+                return;
+            }
+            AppState.selectedShape.locked = !AppState.selectedShape.locked;
+            redrawCanvas();
+            showToast(AppState.selectedShape.locked ? 'ロックしました' : 'ロック解除しました');
+        }
+
+        // スナップ機能
+        function applySnap(x, y) {
+            let snappedX = x;
+            let snappedY = y;
+            AppState.guidelines = [];
+
+            if (AppState.snapToGrid && AppState.snapEnabled) {
+                snappedX = Math.round(x / AppState.gridSize) * AppState.gridSize;
+                snappedY = Math.round(y / AppState.gridSize) * AppState.gridSize;
+            }
+
+            if (AppState.snapToObjects && AppState.snapEnabled) {
+                AppState.shapes.forEach(shape => {
+                    if (shape === AppState.selectedShape) return;
+
+                    const edges = [
+                        { pos: shape.x, type: 'vertical' },
+                        { pos: shape.x + shape.w, type: 'vertical' },
+                        { pos: shape.x + shape.w / 2, type: 'vertical' },
+                        { pos: shape.y, type: 'horizontal' },
+                        { pos: shape.y + shape.h, type: 'horizontal' },
+                        { pos: shape.y + shape.h / 2, type: 'horizontal' }
+                    ];
+
+                    edges.forEach(edge => {
+                        if (edge.type === 'vertical' && Math.abs(x - edge.pos) < AppState.snapTolerance) {
+                            snappedX = edge.pos;
+                            AppState.guidelines.push({ type: 'vertical', pos: edge.pos });
+                        }
+                        if (edge.type === 'horizontal' && Math.abs(y - edge.pos) < AppState.snapTolerance) {
+                            snappedY = edge.pos;
+                            AppState.guidelines.push({ type: 'horizontal', pos: edge.pos });
+                        }
+                    });
+                });
+            }
+
+            return { x: snappedX, y: snappedY };
+        }
+
+        function drawGuidelines() {
+            ctx.save();
+            ctx.strokeStyle = '#FF961C';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+
+            AppState.guidelines.forEach(guide => {
+                ctx.beginPath();
+                if (guide.type === 'vertical') {
+                    ctx.moveTo(guide.pos, 0);
+                    ctx.lineTo(guide.pos, canvas.height);
+                } else {
+                    ctx.moveTo(0, guide.pos);
+                    ctx.lineTo(canvas.width, guide.pos);
+                }
+                ctx.stroke();
+            });
+
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        function toggleSnap() {
+            AppState.snapEnabled = !AppState.snapEnabled;
+            showToast(AppState.snapEnabled ? 'スナップ有効' : 'スナップ無効', 'info');
+        }
+
+        function toggleGridSnap() {
+            AppState.snapToGrid = !AppState.snapToGrid;
+            showToast(AppState.snapToGrid ? 'グリッドスナップ有効' : 'グリッドスナップ無効', 'info');
+        }
+
+        function toggleObjectSnap() {
+            AppState.snapToObjects = !AppState.snapToObjects;
+            showToast(AppState.snapToObjects ? 'オブジェクトスナップ有効' : 'オブジェクトスナップ無効', 'info');
+        }
+
+        // スタイルプリセット機能
+        function saveCurrentStyle() {
+            const lineWidth = parseInt(document.getElementById('lineWidth').value);
+            const opacity = parseInt(document.getElementById('fillOpacity').value);
+            const name = prompt('プリセット名を入力してください:', `スタイル${AppState.stylePresets.length + 1}`);
+            
+            if (name) {
+                AppState.stylePresets.push({ name, color: AppState.currentColor, lineWidth, opacity });
+                try {
+                    localStorage.setItem('AppState.stylePresets', JSON.stringify(AppState.stylePresets));
+                    showToast(`プリセット「${name}」を保存しました`);
+                    updatePresetButtons();
+                } catch (e) {
+                    console.error('プリセット保存エラー:', e);
+                    showToast('プリセットの保存に失敗しました（ストレージが利用できません）', 'error');
+                    // エラー時は配列から削除
+                    AppState.stylePresets.pop();
+                }
+            }
+        }
+
+        function applyPreset(index) {
+            if (index < 0 || index >= AppState.stylePresets.length) return;
+            
+            const preset = AppState.stylePresets[index];
+            AppState.currentColor = preset.color;
+            document.getElementById('lineWidth').value = preset.lineWidth;
+            document.getElementById('fillOpacity').value = preset.opacity;
+            
+            updateSlider('lineWidth');
+            updateSlider('fillOpacity');
+            AppState.currentPresetIndex = index;
+            
+            // カラーパレットの選択状態を更新
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+                // data-color属性を使用して正しく比較
+                if (btn.dataset.color && btn.dataset.color.toUpperCase() === preset.color.toUpperCase()) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            showToast(`プリセット「${preset.name}」を適用しました`);
+            updatePresetButtons();
+        }
+
+        function deletePreset(index) {
+            if (index < 0 || index >= AppState.stylePresets.length) return;
+            
+            const preset = AppState.stylePresets[index];
+            if (confirm(`プリセット「${preset.name}」を削除しますか？`)) {
+                const deletedPreset = AppState.stylePresets.splice(index, 1)[0];
+                AppState.currentPresetIndex = -1;
+                try {
+                    localStorage.setItem('AppState.stylePresets', JSON.stringify(AppState.stylePresets));
+                    showToast(`プリセット「${preset.name}」を削除しました`);
+                    updatePresetButtons();
+                } catch (e) {
+                    console.error('プリセット削除エラー:', e);
+                    showToast('プリセットの削除に失敗しました（ストレージが利用できません）', 'error');
+                    // エラー時は元に戻す
+                    AppState.stylePresets.splice(index, 0, deletedPreset);
+                }
+            }
+        }
+
+        function updatePresetButtons() {
+            const container = document.getElementById('presetContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            AppState.stylePresets.forEach((preset, index) => {
+                const presetItem = document.createElement('div');
+                presetItem.className = 'preset-item';
+                
+                // XSS対策: textContentを使用してユーザー入力を安全に処理
+                const applyBtn = document.createElement('button');
+                applyBtn.className = 'preset-apply-btn';
+                applyBtn.style.background = preset.color;
+                applyBtn.textContent = preset.name; // innerHTML の代わりに textContent
+                applyBtn.onclick = () => applyPreset(index);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'preset-delete-btn';
+                deleteBtn.textContent = '×';
+                deleteBtn.onclick = () => deletePreset(index);
+                
+                presetItem.appendChild(applyBtn);
+                presetItem.appendChild(deleteBtn);
+                container.appendChild(presetItem);
+            });
+        }
+        
+        // ページ読み込み時にlocalStorageからプリセットを復元
+        function loadPresets() {
+            const saved = localStorage.getItem('AppState.stylePresets');
+            if (saved) {
+                try {
+                    AppState.stylePresets = JSON.parse(saved);
+                    updatePresetButtons();
+                } catch (e) {
+                    console.error('プリセット読み込みエラー:', e);
+                }
+            }
+        }
+
+        async function saveImage() {
+            if (!AppState.backgroundImage) {
+                alert('保存する画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            const tempSelected = AppState.selectedShape;
+            AppState.selectedShape = null;
+            redrawCanvas();
+
+            let filename = document.getElementById('fileNameHeader').value.trim();
+            if (!filename) {
+                const now = new Date();
+                filename = `capture_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+            }
+            filename += '.png';
+
+            canvas.toBlob(async (blob) => {
+                let saved = false;
+                
+                if (AppState.saveDirectoryHandle) {
+                    try {
+                        const fileHandle = await AppState.saveDirectoryHandle.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+
+                        AppState.savedCount++;
+                        document.getElementById('AppState.savedCount').textContent = AppState.savedCount;
+                        showToast(`指定フォルダに保存: ${filename}`);
+                        saved = true;
+                    } catch (err) {
+                        console.error('指定フォルダへの保存失敗:', err);
+                        showToast('指定フォルダへの保存に失敗しました', 'warning');
+                    }
+                }
+                
+                if (!saved) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    AppState.savedCount++;
+                    document.getElementById('AppState.savedCount').textContent = AppState.savedCount;
+                    showToast(`ダウンロードフォルダに保存: ${filename}`);
+                }
+
+                AppState.selectedShape = tempSelected;
+                redrawCanvas();
+            });
+        }
+
+        function quickSave() {
+            saveImage();
+        }
+
+        // クリップボードにコピー
+        async function copyToClipboard() {
+            if (!AppState.backgroundImage) {
+                alert('コピーする画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            const tempSelected = AppState.selectedShape;
+            AppState.selectedShape = null;
+            redrawCanvas();
+
+            try {
+                // CanvasをBlobに変換
+                canvas.toBlob(async (blob) => {
+                    try {
+                        // ClipboardItem を作成してクリップボードに書き込み
+                        const clipboardItem = new ClipboardItem({ 'image/png': blob });
+                        await navigator.clipboard.write([clipboardItem]);
+                        
+                        showToast('画像をクリップボードにコピーしました');
+                    } catch (err) {
+                        console.error('クリップボードコピーエラー:', err);
+                        alert('クリップボードへのコピーに失敗しました。\n\nブラウザがClipboard APIに対応していない可能性があります。');
+                    } finally {
+                        AppState.selectedShape = tempSelected;
+                        redrawCanvas();
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('画像変換エラー:', err);
+                alert('画像の変換に失敗しました。');
+                AppState.selectedShape = tempSelected;
+                redrawCanvas();
+            }
+        }
+
+        // 統一的な保存関数（File System Access API対応）
+        async function saveFile(blob, fileName) {
+            // ファイル名から不正な文字を除去する（セキュリティ対策）
+            const sanitizedFileName = fileName.replace(/[\/\:*?"<>|]/g, '_');
+            
+            // 1. AppState.saveDirectoryHandle (保存先フォルダのハンドル) が存在するかチェック
+            if (AppState.saveDirectoryHandle) {
+                try {
+                    // 2. 存在する場合: File System Access API を使用してファイルを保存（サニタイズ済みファイル名使用）
+                    const fileHandle = await AppState.saveDirectoryHandle.getFileHandle(sanitizedFileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } catch (err) {
+                    // 4. エラーハンドリング
+                    console.error('File System Access APIでの保存エラー:', err);
+                    if (err.name === 'NotAllowedError') {
+                        alert('フォルダへの保存権限がありません。設定を確認してください。');
+                    } else {
+                        alert(`保存に失敗しました: ${err.message}`);
+                    }
+                    // エラーを呼び出し元に伝播させる
+                    throw err;
+                }
+            } else {
+                // 3. 存在しない場合: 従来の<a>タグを使ったダウンロード方法にフォールバック
+                try {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a); // Firefoxでの互換性のために追加
+                    a.click();
+                    document.body.removeChild(a); // 作成した要素をクリーンアップ
+                    URL.revokeObjectURL(url);
+                } catch (err) {
+                    // 4. エラーハンドリング
+                    console.error('フォールバック保存でのエラー:', err);
+                    alert(`ダウンロードに失敗しました: ${err.message}`);
+                    throw err;
+                }
+            }
+        }
+
+        // エクスポートメニューのトグル
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // メニュー外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('exportMenu');
+            const exportBtn = e.target.closest('[data-tooltip="保存形式を選択 (PNG/JPEG/PDF/SVG)"]');
+            if (menu && menu.style.display === 'block' && !menu.contains(e.target) && !exportBtn) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // JPEG エクスポート（統一保存関数使用）
+        async function exportAsJPEG() {
+            document.getElementById('exportMenu').style.display = 'none';
+            
+            if (!AppState.backgroundImage) {
+                alert('エクスポートする画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            // 画質選択モーダルを表示
+            const quality = prompt('JPEG画質を選択してください:\n\n1: 高画質 (95%)\n2: 中画質 (80%)\n3: 低画質 (60%)\n\n数字を入力:', '1');
+            
+            if (!quality) return;
+            
+            let qualityValue;
+            switch(quality) {
+                case '1': qualityValue = 0.95; break;
+                case '2': qualityValue = 0.80; break;
+                case '3': qualityValue = 0.60; break;
+                default:
+                    alert('1, 2, 3 のいずれかを入力してください。');
+                    return;
+            }
+
+            const tempSelected = AppState.selectedShape;
+            AppState.selectedShape = null;
+            redrawCanvas();
+
+            try {
+                // canvas.toBlob はコールバックベースのため、Promiseでラップして async/await で扱えるようにする
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('JPEGへの画像エンコードに失敗しました。'));
+                        }
+                    }, 'image/jpeg', qualityValue);
+                });
+
+                const fileName = getFileName() + '.jpg';
+                
+                // 統一された保存関数を呼び出す
+                await saveFile(blob, fileName);
+
+                // 成功をユーザーに通知
+                showToast(`${fileName} を保存しました`);
+                updateStats('save'); // 保存統計を更新
+
+            } catch (err) {
+                // saveFile内で既にアラートが表示されている場合があるため、コンソールへのログ出力に留める
+                console.error('JPEGのエクスポート処理全体でエラーが発生しました:', err);
+            } finally {
+                // 選択状態を元に戻して再描画
+                AppState.selectedShape = tempSelected;
+                redrawCanvas();
+            }
+        }
+
+        // PDF エクスポート（統一保存関数使用）
+        async function exportAsPDF() {
+            document.getElementById('exportMenu').style.display = 'none';
+            
+            if (!AppState.backgroundImage) {
+                alert('エクスポートする画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            if (typeof jspdf === 'undefined') {
+                alert('PDFライブラリが読み込まれていません。\n\nページをリロードしてください。');
+                return;
+            }
+
+            const tempSelected = AppState.selectedShape;
+            AppState.selectedShape = null;
+            redrawCanvas();
+
+            try {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jspdf.jsPDF({
+                    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                
+                // PDFをBlobとして取得
+                const blob = pdf.output('blob');
+                const fileName = getFileName() + '.pdf';
+                
+                // 統一された保存関数を呼び出す
+                await saveFile(blob, fileName);
+                
+                // 成功をユーザーに通知
+                showToast(`${fileName} を保存しました`);
+                updateStats('save'); // 保存統計を更新
+
+            } catch (err) {
+                console.error('PDF出力エラー:', err);
+                // saveFile内で既にアラートが表示されている場合があるため、追加のアラートは表示しない
+            } finally {
+                AppState.selectedShape = tempSelected;
+                redrawCanvas();
+            }
+        }
+
+        // SVG エクスポート（統一保存関数使用）
+        async function exportAsSVG() {
+            document.getElementById('exportMenu').style.display = 'none';
+            
+            if (!AppState.backgroundImage) {
+                alert('エクスポートする画像がありません。\n\n先に画像を読み込んでください。');
+                return;
+            }
+
+            const tempSelected = AppState.selectedShape;
+            AppState.selectedShape = null;
+            redrawCanvas();
+
+            try {
+                // SVG開始タグ（矢印マーカー定義を含む）
+                let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">
+`;
+                svg += `  <defs>
+`;
+                svg += `    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+`;
+                svg += `      <path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/>
+`;
+                svg += `    </marker>
+`;
+                svg += `  </defs>
+`;
+
+                // 背景画像をBase64として埋め込み
+                svg += `  <image href="${canvas.toDataURL('image/png')}" width="${canvas.width}" height="${canvas.height}"/>
+`;
+
+                // 図形をSVG要素に変換
+                AppState.shapes.forEach(shape => {
+                    // 透明度の正しい計算（shape.opacityが大きいほど透明になる）
+                    const fillOpacity = shape.opacity !== undefined ? shape.opacity / 100 : 1;
+                    const strokeWidth = shape.lineWidth || 2;
+                    const color = shape.color || '#FF0000';
+                    
+                    switch(shape.type) {
+                        case 'rect':
+                            svg += `  <rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                            break;
+                        case 'circle':
+                            // 楕円として正確に描画（Canvas描画と一致）
+                            const rx = Math.abs(shape.w) / 2;
+                            const ry = Math.abs(shape.h) / 2;
+                            const cx = shape.x + shape.w / 2;
+                            const cy = shape.y + shape.h / 2;
+                            svg += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                            break;
+                        case 'line':
+                            svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                            break;
+                        case 'arrow':
+                            svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}" marker-end="url(#arrowhead)"/>
+`;
+                            break;
+                        case 'text':
+                            // Canvas描画と同じフォントサイズとbaseline調整
+                            const fontSize = shape.fontSize || 20;
+                            svg += `  <text x="${shape.x}" y="${shape.y + fontSize * 0.8}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${color}">${escapeXml(shape.text || '')}</text>
+`;
+                            break;
+                        case 'freehand':
+                            if (shape.points && shape.points.length > 0) {
+                                let pathData = `M ${shape.points[0].x} ${shape.points[0].y}`;
+                                for (let i = 1; i < shape.points.length; i++) {
+                                    pathData += ` L ${shape.points[i].x} ${shape.points[i].y}`;
+                                }
+                                svg += `  <path d="${pathData}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+`;
+                            }
+                            break;
+                    }
+                });
+                
+                svg += '</svg>';
+                
+                // SVGファイルとしてBlobを作成
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                const fileName = getFileName() + '.svg';
+                
+                // 統一された保存関数を呼び出す
+                await saveFile(blob, fileName);
+                
+                // 成功をユーザーに通知
+                showToast(`${fileName} を保存しました`);
+                updateStats('save'); // 保存統計を更新
+            } catch (err) {
+                console.error('SVG出力エラー:', err);
+                alert('SVG出力に失敗しました。');
+            } finally {
+                AppState.selectedShape = tempSelected;
+                redrawCanvas();
+            }
+        }
+
+        // XML特殊文字のエスケープ
+        function escapeXml(text) {
+            return text.replace(/&/g, '&amp;')
+                       .replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;')
+                       .replace(/"/g, '&quot;')
+                       .replace(/'/g, '&apos;');
+        }
+
+        // ファイル名取得ヘルパー
+        function getFileName() {
+            const fileNameInput = document.getElementById('fileNameHeader');
+            if (fileNameInput && fileNameInput.value) {
+                return fileNameInput.value;
+            }
+            // ファイル名が未入力の場合、日付ベースのファイル名を生成
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            return `capture_${year}${month}${day}_${hours}${minutes}${seconds}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            // info, success, warningの3タイプに対応
+            if (type === 'info') {
+                toast.style.background = '#007bff'; // 青
+            } else if (type === 'success') {
+                toast.style.background = '#28a745'; // 緑
+            } else {
+                toast.style.background = '#ffc107'; // 黄
+            }
+            toast.classList.add('active');
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                AppState.isShiftPressed = true;
+            }
+
+            // ツール切り替え (1-9)
+            const toolMap = {
+                '1': 'select', '2': 'rect', '3': 'circle', '4': 'line',
+                '5': 'arrow', '6': 'polyline', '7': 'freehand', '8': 'text', '9': 'highlight'
+            };
+            if (toolMap[e.key]) {
+                e.preventDefault();
+                const btn = document.querySelector(`.tool-btn[onclick*="${toolMap[e.key]}"]`);
+                if (btn) btn.click();
+                showToast(`ツール切替: ${toolMap[e.key]}`, 'info');
+                return;
+            }
+
+            if (e.ctrlKey && e.key === 'v') {
+                e.preventDefault();
+                pasteFromClipboard();
+            } else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                quickSave();
+            } else if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undoLast();
+            } else if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                redoLast();
+            } else if (e.key === 'Delete' && AppState.selectedShape) {
+                deleteSelectedShape();
+            } else if (e.ctrlKey && e.key === 'c' && AppState.selectedShape) {
+                e.preventDefault();
+                duplicateSelectedShape();
+            } else if (e.key === 'Escape') {
+                if (AppState.isPolylineActive) {
+                    AppState.polylinePoints = [];
+                    AppState.isPolylineActive = false;
+                    redrawCanvas();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                AppState.isShiftPressed = false;
+            }
+        });
+
+        document.querySelector('.color-btn[data-color="#FF0000"]').classList.add('active');
+
+        // 画像スタンプ機能
+        function loadStamps() {
+            const saved = localStorage.getItem('AppState.imageStamps');
+            if (saved) {
+                try {
+                    AppState.imageStamps = JSON.parse(saved);
+                    renderStampList();
+                } catch (err) {
+                    console.error('スタンプ読み込みエラー:', err);
+                    AppState.imageStamps = [];
+                }
+            }
+        }
+
+        function saveStamps() {
+            try {
+                localStorage.setItem('AppState.imageStamps', JSON.stringify(AppState.imageStamps));
+            } catch (err) {
+                if (err.name === 'QuotaExceededError') {
+                    showToast('保存容量が不足しています。スタンプを削除してください', 'warning');
+                } else {
+                    console.error('スタンプ保存エラー:', err);
+                    showToast('スタンプの保存に失敗しました', 'warning');
+                }
+            }
+        }
+
+        function renderStampList() {
+            const list = document.getElementById('stampList');
+            list.innerHTML = '';
+
+            AppState.imageStamps.forEach((stamp, index) => {
+                const item = document.createElement('div');
+                item.className = 'stamp-item';
+                item.onclick = () => applyStamp(index);
+
+                const preview = document.createElement('div');
+                preview.className = 'stamp-preview';
+
+                const img = document.createElement('img');
+                img.src = stamp.dataUrl;
+                img.alt = stamp.name;
+                preview.appendChild(img);
+
+                const name = document.createElement('div');
+                name.className = 'stamp-name';
+                name.textContent = stamp.name;
+                name.title = stamp.name;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'stamp-delete';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteStamp(index);
+                };
+
+                item.appendChild(preview);
+                item.appendChild(name);
+                item.appendChild(deleteBtn);
+                list.appendChild(item);
+            });
+        }
+
+        function addImageStamp() {
+            if (AppState.imageStamps.length >= 50) {
+                showToast('スタンプ数の上限（50件）に達しています', 'warning');
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/bmp,image/jpeg,image/jpg,image/png,image/gif';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                processImageFile(file);
+            };
+            input.click();
+        }
+
+        function addImageStampFolder() {
+            if (AppState.imageStamps.length >= 50) {
+                showToast('スタンプ数の上限（50件）に達しています', 'warning');
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/bmp,image/jpeg,image/jpg,image/png,image/gif';
+            input.webkitdirectory = true;  // フォルダ選択を有効化
+            input.multiple = true;
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files);
+
+                // 画像ファイルのみフィルタリング
+                const imageFiles = files.filter(file => {
+                    return file.type.startsWith('image/') &&
+                           (file.type === 'image/bmp' ||
+                            file.type === 'image/jpeg' ||
+                            file.type === 'image/png' ||
+                            file.type === 'image/gif');
+                });
+
+                if (imageFiles.length === 0) {
+                    showToast('フォルダ内に画像ファイルが見つかりません', 'warning');
+                    return;
+                }
+
+                // 上限チェック
+                const remaining = 50 - AppState.imageStamps.length;
+                if (imageFiles.length > remaining) {
+                    if (!confirm(`${imageFiles.length}件の画像が見つかりましたが、残り${remaining}件まで登録できます。\n最初の${remaining}件を登録しますか？`)) {
+                        return;
+                    }
+                    imageFiles.splice(remaining);
+                }
+
+                // 処理中メッセージ
+                showToast(`${imageFiles.length}件の画像を読み込み中...`);
+
+                let processed = 0;
+                let succeeded = 0;
+
+                imageFiles.forEach((file, index) => {
+                    setTimeout(() => {
+                        processImageFile(file, () => {
+                            processed++;
+                            succeeded++;
+                            if (processed === imageFiles.length) {
+                                showToast(`${succeeded}件の画像スタンプを登録しました`);
+                            }
+                        }, () => {
+                            processed++;
+                            if (processed === imageFiles.length) {
+                                showToast(`${succeeded}/${imageFiles.length}件の画像スタンプを登録しました`, 'warning');
+                            }
+                        });
+                    }, index * 100);  // 100msずつ遅延させて処理
+                });
+            };
+            input.click();
+        }
+
+        function processImageFile(file, onSuccess, onError) {
+            // ファイルサイズチェック（5MB制限）
+            if (file.size > 5 * 1024 * 1024) {
+                console.warn(`スキップ: ${file.name} (5MB超過)`);
+                if (onError) onError();
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // スタンプ名を自動生成（ファイル名から拡張子を除く）
+                    const name = file.name.replace(/\.[^/.]+$/, '').slice(0, 20);
+
+                    const stamp = {
+                        name: name,
+                        dataUrl: event.target.result,
+                        width: img.width,
+                        height: img.height,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    AppState.imageStamps.push(stamp);
+                    saveStamps();
+                    renderStampList();
+
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        showToast('画像スタンプを登録しました');
+                    }
+                };
+                img.onerror = () => {
+                    console.warn(`読み込み失敗: ${file.name}`);
+                    if (onError) {
+                        onError();
+                    } else {
+                        showToast('画像の読み込みに失敗しました', 'warning');
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyStamp(index) {
+            if (!AppState.backgroundImage) {
+                showToast('先に画像を読み込んでください', 'warning');
+                return;
+            }
+
+            const stamp = AppState.imageStamps[index];
+            if (!stamp) return;
+
+            const img = new Image();
+            img.onload = () => {
+                // キャンバス中央に配置
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+
+                // スタンプサイズをキャンバスの30%に制限
+                const maxSize = Math.min(canvas.width, canvas.height) * 0.3;
+                let w = img.width;
+                let h = img.height;
+
+                if (w > maxSize || h > maxSize) {
+                    const scale = maxSize / Math.max(w, h);
+                    w *= scale;
+                    h *= scale;
+                }
+
+                const shape = {
+                    type: 'image',
+                    x: centerX - w / 2,
+                    y: centerY - h / 2,
+                    w: w,
+                    h: h,
+                    imageData: stamp.dataUrl,
+                    imageName: stamp.name,
+                    rotation: 0  // 初期回転角度
+                };
+
+                AppState.shapes.push(shape);
+                redrawCanvas();
+                showToast(`「${stamp.name}」を挿入しました`);
+                document.getElementById('shapeCount').textContent = AppState.shapes.length;
+            };
+            img.src = stamp.dataUrl;
+        }
+
+        function deleteStamp(index) {
+            if (!confirm('このスタンプを削除しますか？')) return;
+
+            AppState.imageStamps.splice(index, 1);
+            saveStamps();
+            renderStampList();
+            showToast('スタンプを削除しました');
+        }
+
+        function clearAllStamps() {
+            if (AppState.imageStamps.length === 0) {
+                showToast('削除するスタンプがありません', 'warning');
+                return;
+            }
+
+            if (!confirm(`すべてのスタンプ（${AppState.imageStamps.length}件）を削除しますか？`)) return;
+
+            AppState.imageStamps = [];
+            saveStamps();
+            renderStampList();
+            showToast('すべてのスタンプを削除しました');
+        }
+
+        // 初期化
+        loadStamps();
+
+        // ========================================
+        // グローバルAPIの公開 (HTML onclick属性からアクセス可能にする)
+        // ========================================
+        window.selectSaveFolder = selectSaveFolder;
+        window.pasteFromClipboard = pasteFromClipboard;
+        window.copyToClipboard = copyToClipboard;
+        window.toggleExportMenu = toggleExportMenu;
+        window.quickSave = quickSave;
+        window.exportAsJPEG = exportAsJPEG;
+        window.exportAsPDF = exportAsPDF;
+        window.exportAsSVG = exportAsSVG;
+        window.loadImageFile = loadImageFile;
+        window.captureScreen = captureScreen;
+        window.startTrimMode = startTrimMode;
+        window.resizeByInput = resizeByInput;
+        window.resizeToPreset = resizeToPreset;
+        window.resizeByPercent = resizeByPercent;
+        window.selectTool = selectTool;
+        window.selectColor = selectColor;
+        window.openCustomColorPicker = openCustomColorPicker;
+        window.confirmCustomColor = confirmCustomColor;
+        window.cancelCustomColor = cancelCustomColor;
+        window.undoLast = undoLast;
+        window.clearAll = clearAll;
+        window.confirmTrim = confirmTrim;
+        window.cancelTrim = cancelTrim;
+        window.confirmText = confirmText;
+        window.cancelText = cancelText;
+        window.zoomIn = zoomIn;
+        window.zoomOut = zoomOut;
+        window.zoomReset = zoomReset;
+        window.deleteSelectedShape = deleteSelectedShape;
+        window.duplicateSelectedShape = duplicateSelectedShape;
+        window.bringToFront = bringToFront;
+        window.sendToBack = sendToBack;
+        window.toggleLock = toggleLock;
+        window.rotateSelectedShape = rotateSelectedShape;
+        window.editSelectedShape = editSelectedShape;
+        window.addImageStamp = addImageStamp;
+        window.addImageStampFolder = addImageStampFolder;
+        window.clearAllStamps = clearAllStamps;
+        window.restoreSavedDirectory = restoreSavedDirectory;
+        window.updateSlider = updateSlider;
+        window.updateSliderFromInput = updateSliderFromInput;
+
+    })(); // IIFE終了
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        // DOMロード後にLucideアイコン初期化
+        lucide.createIcons();
+
+        // タブ切り替え機能（Gemini推奨のイベント委任パターン）
+        const sidebar = document.querySelector('.sidebar');
+        const tabButtons = sidebar.querySelector('.tab-buttons');
+
+        tabButtons.addEventListener('click', (event) => {
+            // クリックされたのがタブボタンでなければ処理を中断
+            const clickedButton = event.target.closest('.tab-button');
+            if (!clickedButton) return;
+
+            // 1. 全てのタブボタンから 'active' クラスを削除
+            tabButtons.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // 2. クリックされたボタンに 'active' クラスを追加
+            clickedButton.classList.add('active');
+
+            // 3. 表示対象のタブIDを取得
+            const targetTabId = clickedButton.dataset.tab;
+
+            // 4. 全てのコンテンツを一旦非表示に
+            sidebar.querySelectorAll('.tool-section[data-content]').forEach(section => {
+                section.hidden = true;
+            });
+
+            // 5. 対象のコンテンツのみを表示
+            sidebar.querySelectorAll(`.tool-section[data-content="${targetTabId}"]`).forEach(section => {
+                section.hidden = false;
+            });
+
+            // 6. Lucideアイコンを再初期化（動的表示切替後に必要）
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
