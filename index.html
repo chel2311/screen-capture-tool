@@ -62,6 +62,57 @@
             background: rgba(255,255,255,0.3);
         }
 
+        /* ページタブ */
+        .page-tabs-container {
+            background: #f8f9fa;
+            border-bottom: 2px solid #005BAB;
+            padding: 8px 15px;
+            display: none; /* 複数ページ時のみ表示 */
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .page-tabs-container.active {
+            display: block;
+        }
+
+        .page-tab {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-right: 4px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .page-tab:hover {
+            background: #e9ecef;
+        }
+
+        .page-tab.active {
+            background: #005BAB;
+            color: white;
+            border-color: #005BAB;
+        }
+
+        .page-tab .close-page {
+            margin-left: 8px;
+            color: #6c757d;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .page-tab.active .close-page {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .page-tab .close-page:hover {
+            color: #dc3545;
+        }
+
         .main-content {
             display: flex;
             height: calc(100vh - 110px);
@@ -381,14 +432,29 @@
         .canvas-container {
             flex: 1;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: flex-start;
+            justify-content: flex-start;
             position: relative;
-            background: #ffffff;
+            background: #f0f0f0;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             overflow: auto;
-            padding: 20px;
+            padding: 100px; /* 十分な余白を確保 */
+            cursor: grab;
+        }
+
+        .canvas-container.panning {
+            cursor: grabbing;
+        }
+
+        .canvas-container canvas {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: white;
+        }
+
+        .canvas-wrapper {
+            display: inline-block;
+            transform-origin: top left;
         }
 
         .canvas-size-overlay {
@@ -889,6 +955,11 @@
             </div>
         </div>
 
+        <!-- ページタブ（複数ページ時のみ表示） -->
+        <div id="pageTabsContainer" class="page-tabs-container">
+            <!-- ページタブは動的に追加 -->
+        </div>
+
         <div class="main-content">
             <div class="sidebar">
                 <!-- タブボタン -->
@@ -928,7 +999,7 @@
                         <button class="preset-btn" onclick="resizeByPercent(50)" data-tooltip="50%に縮小">50%</button>
                         <button class="preset-btn" onclick="resizeByPercent(200)" data-tooltip="200%に拡大">200%</button>
                     </div>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                    <input type="file" id="fileInput" accept="image/*,application/pdf" style="display: none;" onchange="handleFileSelect(event)">
                     <div class="info-badge">
                         <i data-lucide="lightbulb" style="width: 12px; height: 12px; vertical-align: middle;"></i> Win+Shift+S でスクショ後に「クリップボード」
                     </div>
@@ -1260,6 +1331,11 @@
         // アプリケーション状態管理オブジェクト
         // ========================================
         const AppState = {
+            // ページ管理（複数ページ対応）
+            pages: [],
+            currentPageIndex: 0,
+            originalFileName: '',
+            
             // 描画ツール関連
             currentTool: null,
             currentColor: '#FF0000',
@@ -1311,6 +1387,7 @@
             polylinePoints: [],
             freehandPoints: [],
             isPolylineActive: false,
+            freehandDirection: null, // 'horizontal' | 'vertical' | null
 
             // その他
             doubleClickTimer: null,
@@ -1326,7 +1403,17 @@
             imageCache: new Map(),
 
             // IndexedDB
-            db: null
+            db: null,
+
+            // パン機能
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            scrollStartX: 0,
+            scrollStartY: 0,
+
+            // ピンチズーム
+            lastTouchDistance: 0
         };
 
          // Redo用スタック
@@ -1363,6 +1450,128 @@
             ctx.fillText('Win+Shift+S でスクショ → 📋クリップボードボタン', canvas.width / 2, canvas.height / 2 - 10);
             ctx.fillText('または 📁ファイル選択', canvas.width / 2, canvas.height / 2 + 20);
         }
+
+        // キャンバスコンテナのパン機能とピンチズームを初期化
+        function initCanvasPanAndZoom() {
+            const container = document.querySelector('.canvas-container');
+            
+            // マウス中ボタン（ホイールクリック）でのパン
+            container.addEventListener('mousedown', (e) => {
+                if (e.button === 1) { // 中ボタン
+                    e.preventDefault();
+                    AppState.isPanning = true;
+                    AppState.panStartX = e.clientX;
+                    AppState.panStartY = e.clientY;
+                    AppState.scrollStartX = container.scrollLeft;
+                    AppState.scrollStartY = container.scrollTop;
+                    container.classList.add('panning');
+                }
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (AppState.isPanning) {
+                    e.preventDefault();
+                    const dx = AppState.panStartX - e.clientX;
+                    const dy = AppState.panStartY - e.clientY;
+                    container.scrollLeft = AppState.scrollStartX + dx;
+                    container.scrollTop = AppState.scrollStartY + dy;
+                }
+            });
+
+            container.addEventListener('mouseup', (e) => {
+                if (e.button === 1) {
+                    AppState.isPanning = false;
+                    container.classList.remove('panning');
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                if (AppState.isPanning) {
+                    AppState.isPanning = false;
+                    container.classList.remove('panning');
+                }
+            });
+
+            // タッチスワイプでのパン（2本指）
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let scrollStartX = 0;
+            let scrollStartY = 0;
+
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    // ピンチズームの準備
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const distance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    AppState.lastTouchDistance = distance;
+                } else if (e.touches.length === 1) {
+                    // シングルタッチでのパン
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    scrollStartX = container.scrollLeft;
+                    scrollStartY = container.scrollTop;
+                }
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    // ピンチズーム
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const distance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+
+                    if (AppState.lastTouchDistance > 0) {
+                        const scale = distance / AppState.lastTouchDistance;
+                        const newZoom = Math.max(0.1, Math.min(5.0, AppState.zoom * scale));
+                        
+                        if (newZoom !== AppState.zoom) {
+                            AppState.zoom = newZoom;
+                            updateZoom();
+                        }
+                    }
+
+                    AppState.lastTouchDistance = distance;
+                } else if (e.touches.length === 1) {
+                    // シングルタッチでのパン
+                    const dx = touchStartX - e.touches[0].clientX;
+                    const dy = touchStartY - e.touches[0].clientY;
+                    container.scrollLeft = scrollStartX + dx;
+                    container.scrollTop = scrollStartY + dy;
+                }
+            });
+
+            container.addEventListener('touchend', () => {
+                AppState.lastTouchDistance = 0;
+            });
+
+            // ホイールでのズーム（Ctrl押下時）
+            container.addEventListener('wheel', (e) => {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                    const newZoom = Math.max(0.1, Math.min(5.0, AppState.zoom + delta));
+                    
+                    if (newZoom !== AppState.zoom) {
+                        AppState.zoom = newZoom;
+                        updateZoom();
+                        document.getElementById('zoomLevel').textContent = Math.round(AppState.zoom * 100);
+                    }
+                }
+            }, { passive: false });
+        }
+
+        // ページロード時に初期化
+        window.addEventListener('DOMContentLoaded', () => {
+            initCanvasPanAndZoom();
+        });
 
         // 画面キャプチャ機能
         async function captureScreen() {
@@ -1815,9 +2024,15 @@
             document.getElementById('fileInput').click();
         }
 
-        function handleFileSelect(event) {
+        async function handleFileSelect(event) {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
+            if (!file) return;
+
+            AppState.originalFileName = file.name.replace(/\.[^/.]+$/, ''); // 拡張子を除く
+
+            if (file.type === 'application/pdf') {
+                await loadPDFFile(file);
+            } else if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     loadImageToCanvas(e.target.result);
@@ -1827,9 +2042,157 @@
             }
         }
 
+        // PDFファイル読み込み
+        async function loadPDFFile(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+
+                showToast(`PDFを読み込み中... (${numPages}ページ)`);
+
+                // ページ情報をリセット
+                AppState.pages = [];
+                AppState.currentPageIndex = 0;
+
+                // 全ページを読み込み
+                for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 1.5 });
+
+                    // 一時キャンバスで PDF ページをレンダリング
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = viewport.width;
+                    tempCanvas.height = viewport.height;
+
+                    await page.render({
+                        canvasContext: tempCtx,
+                        viewport: viewport
+                    }).promise;
+
+                    // 画像として保存
+                    const img = new Image();
+                    img.src = tempCanvas.toDataURL();
+                    await new Promise(resolve => { img.onload = resolve; });
+
+                    // ページデータを保存
+                    AppState.pages.push({
+                        backgroundImage: img,
+                        shapes: [],
+                        zoom: 1.0,
+                        width: tempCanvas.width,
+                        height: tempCanvas.height
+                    });
+                }
+
+                // 最初のページを表示
+                loadPageToCanvas(0);
+                updatePageTabs();
+                showToast(`PDFを読み込みました (${numPages}ページ)`);
+
+            } catch (err) {
+                console.error('PDF読み込みエラー:', err);
+                alert('PDFファイルの読み込みに失敗しました。');
+            }
+        }
+
+        // ページをキャンバスに読み込み
+        function loadPageToCanvas(pageIndex) {
+            if (pageIndex < 0 || pageIndex >= AppState.pages.length) return;
+
+            // 現在のページを保存
+            if (AppState.currentPageIndex >= 0 && AppState.currentPageIndex < AppState.pages.length) {
+                saveCurrentPage();
+            }
+
+            // 新しいページを読み込み
+            AppState.currentPageIndex = pageIndex;
+            const page = AppState.pages[pageIndex];
+
+            canvas.width = page.width;
+            canvas.height = page.height;
+            AppState.backgroundImage = page.backgroundImage;
+            AppState.shapes = page.shapes;
+            AppState.zoom = page.zoom;
+
+            updateZoom();
+            redrawCanvas();
+            updateCanvasSize();
+            updateCanvasSizeOverlay();
+            updatePageTabs();
+
+            document.getElementById('trimBtn').disabled = false;
+            document.getElementById('resizeInputBtn').disabled = false;
+            document.getElementById('presetContainer').classList.remove('preset-hidden');
+        }
+
+        // 現在のページ状態を保存
+        function saveCurrentPage() {
+            if (AppState.currentPageIndex < 0 || AppState.currentPageIndex >= AppState.pages.length) return;
+
+            const page = AppState.pages[AppState.currentPageIndex];
+            page.shapes = [...AppState.shapes];
+            page.zoom = AppState.zoom;
+            page.width = canvas.width;
+            page.height = canvas.height;
+        }
+
+        // ページタブUIを更新
+        function updatePageTabs() {
+            const container = document.getElementById('pageTabsContainer');
+            
+            if (AppState.pages.length <= 1) {
+                container.classList.remove('active');
+                return;
+            }
+
+            container.classList.add('active');
+            container.innerHTML = '';
+
+            AppState.pages.forEach((page, index) => {
+                const tab = document.createElement('div');
+                tab.className = 'page-tab';
+                if (index === AppState.currentPageIndex) {
+                    tab.classList.add('active');
+                }
+                tab.innerHTML = `ページ ${index + 1} <span class="close-page" onclick="event.stopPropagation(); deletePage(${index})">×</span>`;
+                tab.onclick = () => loadPageToCanvas(index);
+                container.appendChild(tab);
+            });
+        }
+
+        // ページ削除
+        function deletePage(pageIndex) {
+            if (AppState.pages.length <= 1) {
+                alert('最後のページは削除できません。');
+                return;
+            }
+
+            if (!confirm(`ページ ${pageIndex + 1} を削除しますか？`)) return;
+
+            AppState.pages.splice(pageIndex, 1);
+
+            if (AppState.currentPageIndex >= AppState.pages.length) {
+                AppState.currentPageIndex = AppState.pages.length - 1;
+            }
+
+            loadPageToCanvas(AppState.currentPageIndex);
+        }
+
         function loadImageToCanvas(dataUrl) {
             const img = new Image();
             img.onload = () => {
+                // 単一画像の場合はページ配列を初期化
+                AppState.pages = [{
+                    backgroundImage: img,
+                    shapes: [],
+                    zoom: 1.0,
+                    width: img.width,
+                    height: img.height
+                }];
+                AppState.currentPageIndex = 0;
+
                 canvas.width = img.width;
                 canvas.height = img.height;
                 AppState.backgroundImage = img;
@@ -1839,6 +2202,7 @@
                 redrawCanvas();
                 updateCanvasSize();
                 updateCanvasSizeOverlay();
+                updatePageTabs();
                 document.getElementById('trimBtn').disabled = false;
                 document.getElementById('resizeInputBtn').disabled = false;
                 document.getElementById('presetContainer').classList.remove('preset-hidden');
@@ -2619,9 +2983,12 @@
             AppState.lastClickTime = currentTime;
 
             // フリーハンド処理
-            // フリーハンド処理
             if (AppState.currentTool === 'freehand') {
+                // 左クリック（button === 0）のみで描画開始
+                if (e.button !== 0) return;
+                
                 AppState.freehandPoints = [{ x: mouseX, y: mouseY }];
+                AppState.freehandDirection = null; // 方向をリセット
                 AppState.isDrawing = true;
                 return;
             }
@@ -2746,7 +3113,33 @@
 
             // フリーハンド描画中
             if (AppState.isDrawing && AppState.currentTool === 'freehand') {
-                AppState.freehandPoints.push({ x: mouseX, y: mouseY });
+                let pointX = mouseX;
+                let pointY = mouseY;
+                
+                // Shiftキー押下時：開始点から水平または垂直に制約
+                if (AppState.isShiftPressed && AppState.freehandPoints.length > 0) {
+                    const startPoint = AppState.freehandPoints[0]; // 開始点
+                    const dx = Math.abs(pointX - startPoint.x);
+                    const dy = Math.abs(pointY - startPoint.y);
+                    
+                    // 方向がまだ決まっていない場合、一定距離移動したら方向を決定
+                    if (AppState.freehandDirection === null) {
+                        const threshold = 10; // 方向決定の閾値（ピクセル）
+                        if (dx > threshold || dy > threshold) {
+                            // より大きな差分の方向を採用
+                            AppState.freehandDirection = dx > dy ? 'horizontal' : 'vertical';
+                        }
+                    }
+                    
+                    // 方向が決まっている場合、その方向に制約
+                    if (AppState.freehandDirection === 'horizontal') {
+                        pointY = startPoint.y;
+                    } else if (AppState.freehandDirection === 'vertical') {
+                        pointX = startPoint.x;
+                    }
+                }
+                
+                AppState.freehandPoints.push({ x: pointX, y: pointY });
                 redrawCanvas();
                 
                 // リアルタイムプレビュー
@@ -3109,6 +3502,7 @@
                     });
                 }
                 AppState.freehandPoints = []; // ポイントをクリア
+                AppState.freehandDirection = null; // 方向をリセット
             } else if (AppState.currentTool && AppState.currentTool !== 'select' && AppState.currentTool !== 'text') {
                 // Shiftキー制約を適用
                 if (AppState.isShiftPressed) {
@@ -3329,18 +3723,35 @@
         }
 
         function updateZoom() {
+            // キャンバスラッパーを取得または作成
+            let wrapper = canvas.parentElement;
+            if (!wrapper || !wrapper.classList.contains('canvas-wrapper')) {
+                wrapper = document.createElement('div');
+                wrapper.className = 'canvas-wrapper';
+                canvas.parentElement.insertBefore(wrapper, canvas);
+                wrapper.appendChild(canvas);
+            }
+
+            // ラッパーのサイズをズームに応じて設定
+            const scaledWidth = canvas.width * AppState.zoom;
+            const scaledHeight = canvas.height * AppState.zoom;
+            wrapper.style.width = scaledWidth + 'px';
+            wrapper.style.height = scaledHeight + 'px';
+
+            // キャンバス自体にtransformを適用
             canvas.style.transform = `scale(${AppState.zoom})`;
-            canvas.style.transformOrigin = 'center center';
+            canvas.style.transformOrigin = 'top left';
+            
             document.getElementById('zoomLevel').textContent = Math.round(AppState.zoom * 100);
         }
 
         function zoomIn() {
-            AppState.zoom = Math.min(AppState.zoom + 0.1, 3.0);
+            AppState.zoom = Math.min(AppState.zoom + 0.1, 5.0);
             updateZoom();
         }
 
         function zoomOut() {
-            AppState.zoom = Math.max(AppState.zoom - 0.1, 0.5);
+            AppState.zoom = Math.max(AppState.zoom - 0.1, 0.1);
             updateZoom();
         }
 
@@ -3607,14 +4018,24 @@
                 return;
             }
 
+            // 複数ページの場合
+            if (AppState.pages.length > 1) {
+                if (!confirm(`${AppState.pages.length}ページの画像を個別に保存しますか？`)) {
+                    return;
+                }
+
+                await saveMultiplePages();
+                return;
+            }
+
+            // 単一ページの場合（既存の処理）
             const tempSelected = AppState.selectedShape;
             AppState.selectedShape = null;
             redrawCanvas();
 
             let filename = document.getElementById('fileNameHeader').value.trim();
             if (!filename) {
-                const now = new Date();
-                filename = `capture_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+                filename = AppState.originalFileName || generateTimestampFilename();
             }
             filename += '.png';
 
@@ -3654,6 +4075,71 @@
                 AppState.selectedShape = tempSelected;
                 redrawCanvas();
             });
+        }
+
+        // 複数ページをPNG形式で保存
+        async function saveMultiplePages() {
+            const baseFilename = document.getElementById('fileNameHeader').value.trim() || AppState.originalFileName || generateTimestampFilename();
+            
+            // 現在のページ状態を保存
+            saveCurrentPage();
+            const currentPageIndex = AppState.currentPageIndex;
+
+            for (let i = 0; i < AppState.pages.length; i++) {
+                const page = AppState.pages[i];
+                const filename = `${baseFilename}-page-${i + 1}.png`;
+
+                // ページをキャンバスに一時的に描画
+                canvas.width = page.width;
+                canvas.height = page.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(page.backgroundImage, 0, 0);
+
+                // 図形を描画
+                page.shapes.forEach(shape => {
+                    drawShape(shape);
+                });
+
+                // 保存
+                await new Promise((resolve) => {
+                    canvas.toBlob(async (blob) => {
+                        let saved = false;
+                        
+                        if (AppState.saveDirectoryHandle) {
+                            try {
+                                const fileHandle = await AppState.saveDirectoryHandle.getFileHandle(filename, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(blob);
+                                await writable.close();
+                                saved = true;
+                            } catch (err) {
+                                console.error('保存エラー:', err);
+                            }
+                        }
+                        
+                        if (!saved) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }
+
+                        resolve();
+                    });
+                });
+            }
+
+            // 元のページに戻す
+            loadPageToCanvas(currentPageIndex);
+            showToast(`${AppState.pages.length}ページの画像を保存しました`);
+        }
+
+        // タイムスタンプベースのファイル名生成
+        function generateTimestampFilename() {
+            const now = new Date();
+            return `capture_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
         }
 
         function quickSave() {
@@ -3779,6 +4265,16 @@
                     return;
             }
 
+            // 複数ページの場合
+            if (AppState.pages.length > 1) {
+                if (!confirm(`${AppState.pages.length}ページの画像をJPEG形式で個別に保存しますか？`)) {
+                    return;
+                }
+                await exportMultipleJPEG(qualityValue);
+                return;
+            }
+
+            // 単一ページの場合
             const tempSelected = AppState.selectedShape;
             AppState.selectedShape = null;
             redrawCanvas();
@@ -3802,7 +4298,6 @@
 
                 // 成功をユーザーに通知
                 showToast(`${fileName} を保存しました`);
-                updateStats('save'); // 保存統計を更新
 
             } catch (err) {
                 // saveFile内で既にアラートが表示されている場合があるため、コンソールへのログ出力に留める
@@ -3812,6 +4307,65 @@
                 AppState.selectedShape = tempSelected;
                 redrawCanvas();
             }
+        }
+
+        // 複数ページをJPEG形式で保存
+        async function exportMultipleJPEG(qualityValue) {
+            const baseFilename = getFileName();
+            
+            // 現在のページ状態を保存
+            saveCurrentPage();
+            const currentPageIndex = AppState.currentPageIndex;
+
+            for (let i = 0; i < AppState.pages.length; i++) {
+                const page = AppState.pages[i];
+                const filename = `${baseFilename}-page-${i + 1}.jpg`;
+
+                // ページをキャンバスに一時的に描画
+                canvas.width = page.width;
+                canvas.height = page.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(page.backgroundImage, 0, 0);
+
+                // 図形を描画
+                page.shapes.forEach(shape => {
+                    drawShape(shape);
+                });
+
+                // 保存
+                await new Promise((resolve) => {
+                    canvas.toBlob(async (blob) => {
+                        let saved = false;
+                        
+                        if (AppState.saveDirectoryHandle) {
+                            try {
+                                const fileHandle = await AppState.saveDirectoryHandle.getFileHandle(filename, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(blob);
+                                await writable.close();
+                                saved = true;
+                            } catch (err) {
+                                console.error('保存エラー:', err);
+                            }
+                        }
+                        
+                        if (!saved) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }
+
+                        resolve();
+                    }, 'image/jpeg', qualityValue);
+                });
+            }
+
+            // 元のページに戻す
+            loadPageToCanvas(currentPageIndex);
+            showToast(`${AppState.pages.length}ページのJPEG画像を保存しました`);
         }
 
         // PDF エクスポート（統一保存関数使用）
@@ -3828,6 +4382,13 @@
                 return;
             }
 
+            // 複数ページの場合
+            if (AppState.pages.length > 1) {
+                await exportMultiPagePDF();
+                return;
+            }
+
+            // 単一ページの場合（既存の処理）
             const tempSelected = AppState.selectedShape;
             AppState.selectedShape = null;
             redrawCanvas();
@@ -3850,7 +4411,7 @@
                 
                 // 成功をユーザーに通知
                 showToast(`${fileName} を保存しました`);
-                updateStats('save'); // 保存統計を更新
+
 
             } catch (err) {
                 console.error('PDF出力エラー:', err);
@@ -3858,6 +4419,64 @@
             } finally {
                 AppState.selectedShape = tempSelected;
                 redrawCanvas();
+            }
+        }
+
+        // 複数ページをPDFとして出力
+        async function exportMultiPagePDF() {
+            try {
+                showToast(`PDF作成中... (${AppState.pages.length}ページ)`);
+
+                // 現在のページ状態を保存
+                saveCurrentPage();
+                const currentPageIndex = AppState.currentPageIndex;
+
+                let pdf = null;
+
+                for (let i = 0; i < AppState.pages.length; i++) {
+                    const page = AppState.pages[i];
+
+                    // ページをキャンバスに一時的に描画
+                    canvas.width = page.width;
+                    canvas.height = page.height;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(page.backgroundImage, 0, 0);
+
+                    // 図形を描画
+                    page.shapes.forEach(shape => {
+                        drawShape(shape);
+                    });
+
+                    const imgData = canvas.toDataURL('image/png');
+
+                    if (i === 0) {
+                        // 最初のページでPDFを作成
+                        pdf = new jspdf.jsPDF({
+                            orientation: page.width > page.height ? 'landscape' : 'portrait',
+                            unit: 'px',
+                            format: [page.width, page.height]
+                        });
+                        pdf.addImage(imgData, 'PNG', 0, 0, page.width, page.height);
+                    } else {
+                        // 2ページ目以降を追加
+                        pdf.addPage([page.width, page.height], page.width > page.height ? 'landscape' : 'portrait');
+                        pdf.addImage(imgData, 'PNG', 0, 0, page.width, page.height);
+                    }
+                }
+
+                // PDFを保存
+                const blob = pdf.output('blob');
+                const fileName = getFileName() + '.pdf';
+                await saveFile(blob, fileName);
+
+                // 元のページに戻す
+                loadPageToCanvas(currentPageIndex);
+                showToast(`${AppState.pages.length}ページのPDFを保存しました`);
+
+
+            } catch (err) {
+                console.error('複数ページPDF出力エラー:', err);
+                alert('PDFの作成に失敗しました。');
             }
         }
 
@@ -3870,78 +4489,22 @@
                 return;
             }
 
+            // 複数ページの場合
+            if (AppState.pages.length > 1) {
+                if (!confirm(`${AppState.pages.length}ページの画像をSVG形式で個別に保存しますか？`)) {
+                    return;
+                }
+                await exportMultipleSVG();
+                return;
+            }
+
+            // 単一ページの場合
             const tempSelected = AppState.selectedShape;
             AppState.selectedShape = null;
             redrawCanvas();
 
             try {
-                // SVG開始タグ（矢印マーカー定義を含む）
-                let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">
-`;
-                svg += `  <defs>
-`;
-                svg += `    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-`;
-                svg += `      <path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/>
-`;
-                svg += `    </marker>
-`;
-                svg += `  </defs>
-`;
-
-                // 背景画像をBase64として埋め込み
-                svg += `  <image href="${canvas.toDataURL('image/png')}" width="${canvas.width}" height="${canvas.height}"/>
-`;
-
-                // 図形をSVG要素に変換
-                AppState.shapes.forEach(shape => {
-                    // 透明度の正しい計算（shape.opacityが大きいほど透明になる）
-                    const fillOpacity = shape.opacity !== undefined ? shape.opacity / 100 : 1;
-                    const strokeWidth = shape.lineWidth || 2;
-                    const color = shape.color || '#FF0000';
-                    
-                    switch(shape.type) {
-                        case 'rect':
-                            svg += `  <rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
-`;
-                            break;
-                        case 'circle':
-                            // 楕円として正確に描画（Canvas描画と一致）
-                            const rx = Math.abs(shape.w) / 2;
-                            const ry = Math.abs(shape.h) / 2;
-                            const cx = shape.x + shape.w / 2;
-                            const cy = shape.y + shape.h / 2;
-                            svg += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
-`;
-                            break;
-                        case 'line':
-                            svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}"/>
-`;
-                            break;
-                        case 'arrow':
-                            svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}" marker-end="url(#arrowhead)"/>
-`;
-                            break;
-                        case 'text':
-                            // Canvas描画と同じフォントサイズとbaseline調整
-                            const fontSize = shape.fontSize || 20;
-                            svg += `  <text x="${shape.x}" y="${shape.y + fontSize * 0.8}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${color}">${escapeXml(shape.text || '')}</text>
-`;
-                            break;
-                        case 'freehand':
-                            if (shape.points && shape.points.length > 0) {
-                                let pathData = `M ${shape.points[0].x} ${shape.points[0].y}`;
-                                for (let i = 1; i < shape.points.length; i++) {
-                                    pathData += ` L ${shape.points[i].x} ${shape.points[i].y}`;
-                                }
-                                svg += `  <path d="${pathData}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>
-`;
-                            }
-                            break;
-                    }
-                });
-                
-                svg += '</svg>';
+                const svg = generateSVG(canvas.width, canvas.height, AppState.shapes, canvas.toDataURL('image/png'));
                 
                 // SVGファイルとしてBlobを作成
                 const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -3952,7 +4515,7 @@
                 
                 // 成功をユーザーに通知
                 showToast(`${fileName} を保存しました`);
-                updateStats('save'); // 保存統計を更新
+
             } catch (err) {
                 console.error('SVG出力エラー:', err);
                 alert('SVG出力に失敗しました。');
@@ -3960,6 +4523,135 @@
                 AppState.selectedShape = tempSelected;
                 redrawCanvas();
             }
+        }
+
+        // SVG生成ヘルパー関数
+        function generateSVG(width, height, shapes, backgroundDataUrl) {
+            // SVG開始タグ（矢印マーカー定義を含む）
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+`;
+            svg += `  <defs>
+`;
+            svg += `    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+`;
+            svg += `      <path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/>
+`;
+            svg += `    </marker>
+`;
+            svg += `  </defs>
+`;
+
+            // 背景画像をBase64として埋め込み
+            svg += `  <image href="${backgroundDataUrl}" width="${width}" height="${height}"/>
+`;
+
+            // 図形をSVG要素に変換
+            shapes.forEach(shape => {
+                // 透明度の正しい計算（shape.opacityが大きいほど透明になる）
+                const fillOpacity = shape.opacity !== undefined ? shape.opacity / 100 : 1;
+                const strokeWidth = shape.lineWidth || 2;
+                const color = shape.color || '#FF0000';
+                
+                switch(shape.type) {
+                    case 'rect':
+                        svg += `  <rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                        break;
+                    case 'circle':
+                        // 楕円として正確に描画（Canvas描画と一致）
+                        const rx = Math.abs(shape.w) / 2;
+                        const ry = Math.abs(shape.h) / 2;
+                        const cx = shape.x + shape.w / 2;
+                        const cy = shape.y + shape.h / 2;
+                        svg += `  <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                        break;
+                    case 'line':
+                        svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}"/>
+`;
+                        break;
+                    case 'arrow':
+                        svg += `  <line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" stroke="${color}" stroke-width="${strokeWidth}" marker-end="url(#arrowhead)"/>
+`;
+                        break;
+                    case 'text':
+                        // Canvas描画と同じフォントサイズとbaseline調整
+                        const fontSize = shape.fontSize || 20;
+                        svg += `  <text x="${shape.x}" y="${shape.y + fontSize * 0.8}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${color}">${escapeXml(shape.text || '')}</text>
+`;
+                        break;
+                    case 'freehand':
+                        if (shape.points && shape.points.length > 0) {
+                            let pathData = `M ${shape.points[0].x} ${shape.points[0].y}`;
+                            for (let i = 1; i < shape.points.length; i++) {
+                                pathData += ` L ${shape.points[i].x} ${shape.points[i].y}`;
+                            }
+                            svg += `  <path d="${pathData}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+`;
+                        }
+                        break;
+                }
+            });
+            
+            svg += '</svg>';
+            return svg;
+        }
+
+        // 複数ページをSVG形式で保存
+        async function exportMultipleSVG() {
+            const baseFilename = getFileName();
+            
+            // 現在のページ状態を保存
+            saveCurrentPage();
+            const currentPageIndex = AppState.currentPageIndex;
+
+            for (let i = 0; i < AppState.pages.length; i++) {
+                const page = AppState.pages[i];
+                const filename = `${baseFilename}-page-${i + 1}.svg`;
+
+                // ページをキャンバスに一時的に描画
+                canvas.width = page.width;
+                canvas.height = page.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(page.backgroundImage, 0, 0);
+
+                // 図形を描画（背景画像のDataURL取得のため）
+                page.shapes.forEach(shape => {
+                    drawShape(shape);
+                });
+
+                const backgroundDataUrl = canvas.toDataURL('image/png');
+                const svg = generateSVG(page.width, page.height, page.shapes, backgroundDataUrl);
+
+                // 保存
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                
+                let saved = false;
+                if (AppState.saveDirectoryHandle) {
+                    try {
+                        const fileHandle = await AppState.saveDirectoryHandle.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        saved = true;
+                    } catch (err) {
+                        console.error('保存エラー:', err);
+                    }
+                }
+                
+                if (!saved) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            }
+
+            // 元のページに戻す
+            loadPageToCanvas(currentPageIndex);
+            showToast(`${AppState.pages.length}ページのSVG画像を保存しました`);
         }
 
         // XML特殊文字のエスケープ
@@ -3977,15 +4669,12 @@
             if (fileNameInput && fileNameInput.value) {
                 return fileNameInput.value;
             }
+            // オリジナルファイル名があれば使用
+            if (AppState.originalFileName) {
+                return AppState.originalFileName;
+            }
             // ファイル名が未入力の場合、日付ベースのファイル名を生成
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            return `capture_${year}${month}${day}_${hours}${minutes}${seconds}`;
+            return generateTimestampFilename();
         }
 
         function showToast(message, type = 'success') {
@@ -4331,6 +5020,7 @@ document.addEventListener('keydown', (e) => {
         window.exportAsPDF = exportAsPDF;
         window.exportAsSVG = exportAsSVG;
         window.loadImageFile = loadImageFile;
+        window.handleFileSelect = handleFileSelect;
         window.captureScreen = captureScreen;
         window.startTrimMode = startTrimMode;
         window.resizeByInput = resizeByInput;
@@ -4369,6 +5059,13 @@ document.addEventListener('keydown', (e) => {
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PDF.js for PDF loading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // PDF.js worker設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
     
     <!-- jsPDF for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
